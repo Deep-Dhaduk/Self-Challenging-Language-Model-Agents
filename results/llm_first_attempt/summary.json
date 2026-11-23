@@ -1,0 +1,44 @@
+{
+  "status": "insufficient_successful_rollouts",
+  "backend": "huggingface_lora",
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "task_source": "template",
+  "seed": 42,
+  "python": "3.13.16",
+  "versions": {
+    "torch": "2.14.1+cu130",
+    "transformers": "4.57.1",
+    "peft": "0.17.1",
+    "accelerate": "1.11.0"
+  },
+  "requested_train_tasks": 24,
+  "requested_test_tasks": 12,
+  "valid_train_tasks": 24,
+  "valid_test_tasks": 12,
+  "training_rollouts": 96,
+  "rewarded_training_rollouts": 0,
+  "successful_action_examples": 0,
+  "training_reward_oracle_disagreements": 0,
+  "before": {
+    "tasks": 12,
+    "attempts_per_task": 2,
+    "pass_at_1": 0.0,
+    "pass_at_2": 0.0,
+    "attempt_success_rate": 0.0,
+    "mean_tool_calls": 1.4583333333333333,
+    "tool_errors": 178,
+    "verifier_oracle_disagreements": 0,
+    "by_operation": {
+      "address": 0.0,
+      "cancel": 0.0,
+      "return": 0.0
+    }
+  },
+  "after": null,
+  "limitations": [
+    "Synthetic retail environment, not M3ToolEval or TauBench.",
+    "A single seed and small sample do not establish statistical significance.",
+    "Verifier checks do not prove natural-language instruction alignment."
+  ],
+  "elapsed_seconds": 1237.7148245
+}

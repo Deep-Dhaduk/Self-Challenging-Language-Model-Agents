@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from .agents import PlanPolicy, collect, metrics, run_model
+from .agents import EXECUTOR_PROTOCOL, PlanPolicy, collect, metrics, preflight, run_model
 from .report import write_json, write_jsonl, write_reports
 from .tasks import ablation_candidates, audit_filters, filter_task, make_tasks
 
@@ -27,7 +27,8 @@ def successful_examples(rollouts) -> list[dict]:
             raise ValueError("Test data must not be exported for training")
         if rollout.reward:
             for example in rollout.examples:
-                examples.append({"task_id": rollout.task_id, "split": "train", **example})
+                if example.get("valid_action", True):
+                    examples.append({"task_id": rollout.task_id, "split": "train", **example})
     return examples
 
 
@@ -43,13 +44,17 @@ def parser() -> argparse.ArgumentParser:
         p.add_argument("--rollouts", type=int, default=4)
         p.add_argument("--eval-k", type=int, default=4 if name == "demo" else 2)
         if name == "llm":
-            p.add_argument("--model", default="Qwen/Qwen2.5-0.5B-Instruct")
+            from .llm import DEFAULT_MODEL
+            p.add_argument("--model", default=DEFAULT_MODEL)
             p.add_argument("--device", choices=("auto", "cpu", "cuda"), default="auto")
             p.add_argument("--task-source", choices=("template", "llm"), default="template")
             p.add_argument("--train-steps", type=int, default=40)
             p.add_argument("--max-steps", type=int, default=8)
             p.add_argument("--max-length", type=int, default=2048)
             p.add_argument("--temperature", type=float, default=0.7)
+            p.add_argument("--max-new-tokens", type=int, default=128)
+            p.add_argument("--preflight-tasks", type=int, default=3,
+                           help="Check up to three training task families before the long run; 0 disables")
     return command
 
 
@@ -59,6 +64,13 @@ def run(args) -> int:
             raise ValueError(f"{name} must be positive")
     if args.train_tasks > 100_000 or args.test_tasks > 100_000:
         raise ValueError("Use at most 100,000 tasks per split to preserve separate seed ranges")
+    if args.command == "llm":
+        if not 0 <= args.preflight_tasks <= 3:
+            raise ValueError("preflight_tasks must be between 0 and 3")
+        if min(args.max_new_tokens, args.max_steps, args.train_steps, args.max_length) < 1:
+            raise ValueError("Generation, tool, and training budgets must be positive")
+        if args.temperature < 0:
+            raise ValueError("temperature must be nonnegative")
     output = args.output
     if output.exists() and any(output.iterdir()):
         raise ValueError(f"Output directory is not empty: {output}. Choose a new --output to preserve the earlier run.")
@@ -69,7 +81,7 @@ def run(args) -> int:
     if args.command == "llm":
         from .llm import HFBackend, environment_versions
         print(f"Loading {args.model}...", flush=True)
-        backend = HFBackend.load(args.model, args.device)
+        backend = HFBackend.load(args.model, args.device, max_new_tokens=args.max_new_tokens)
         versions = environment_versions()
     else:
         versions = {}
@@ -97,6 +109,28 @@ def run(args) -> int:
     policy = PlanPolicy()
     runner = policy.run if backend is None else lambda task, seed: run_model(
         task, backend, seed, max_steps=args.max_steps, temperature=args.temperature)
+    readiness = None
+    if backend is not None and args.preflight_tasks:
+        print("Checking basic tool execution on training tasks before the long experiment...", flush=True)
+        readiness, probes = preflight(train, runner, args.preflight_tasks, args.seed + 3_000_000)
+        write_json(output / "preflight.json", readiness)
+        write_jsonl(output / "preflight_rollouts.jsonl", [r.to_dict() for r in probes])
+        print(f"Preflight: {readiness['successful_attempts']}/{readiness['tasks']} successful tasks", flush=True)
+        if readiness["status"] != "passed":
+            failure = {"status": "preflight_failed", "backend": "huggingface_lora", "model": args.model,
+                       "task_source": args.task_source, "executor_protocol": EXECUTOR_PROTOCOL,
+                       "seed": args.seed, "python": platform.python_version(), "versions": versions,
+                       "runtime": getattr(backend, "runtime_info", {}),
+                       "training_completed": False, "training_rollouts": 0,
+                       "requested_train_tasks": args.train_tasks, "requested_test_tasks": args.test_tasks,
+                       "valid_train_tasks": len(train), "valid_test_tasks": len(test),
+                       "before": None, "after": None, "preflight": readiness,
+                       "elapsed_seconds": time.perf_counter() - start}
+            write_json(output / "status.json", failure)
+            write_json(output / "summary.json", failure)
+            print("Preflight failed; baseline evaluation and training were not started. "
+                  "Inspect preflight_rollouts.jsonl before spending time on a longer run.", file=sys.stderr)
+            return 2
     print(f"Evaluating baseline on {len(test)} held-out tasks...", flush=True)
     before_rollouts = collect(test, runner, args.eval_k, args.seed + 8_000_000)
     before = metrics(before_rollouts, args.eval_k)
@@ -110,6 +144,9 @@ def run(args) -> int:
         "status": "complete", "backend": "tabular" if backend is None else "huggingface_lora",
         "model": "categorical policy over five scripted strategies" if backend is None else args.model,
         "task_source": "template" if backend is None else args.task_source,
+        "executor_protocol": EXECUTOR_PROTOCOL,
+        "runtime": getattr(backend, "runtime_info", {}) if backend else {},
+        "preflight": readiness, "training_completed": False,
         "seed": args.seed, "python": platform.python_version(), "versions": versions,
         "requested_train_tasks": args.train_tasks, "requested_test_tasks": args.test_tasks,
         "valid_train_tasks": len(train), "valid_test_tasks": len(test),
@@ -142,9 +179,13 @@ def run(args) -> int:
                                              max_steps=args.train_steps, max_length=args.max_length, seed=args.seed)
         summary["training_method"] = "response-only LoRA rejection fine-tuning on self-generated successful rollouts"
         after_runner = runner
+    summary["training_completed"] = True
+    summary["status"] = "evaluation_pending"
+    write_json(output / "summary.json", summary)
     print("Evaluating the updated policy on the same held-out tasks and sampling seeds...", flush=True)
     after_rollouts = collect(test, after_runner, args.eval_k, args.seed + 8_000_000)
     summary["after"] = metrics(after_rollouts, args.eval_k)
+    summary["status"] = "complete"
     summary["elapsed_seconds"] = time.perf_counter() - start
     write_jsonl(output / "after_rollouts.jsonl", [r.to_dict() for r in after_rollouts])
     write_reports(output, summary, ablations)

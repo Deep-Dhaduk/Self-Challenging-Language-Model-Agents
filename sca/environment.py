@@ -5,16 +5,20 @@ import random
 
 from .schema import Action, Goal
 
-TOOL_HELP = """Available tools (one JSON object per turn):
-{"tool":"lookup_customer","args":{"email":"..."}} -> customer_id.
-{"tool":"list_orders","args":{"customer_id":"..."}} -> order_id, item, status.
-{"tool":"get_order","args":{"order_id":"..."}} -> full order details.
-{"tool":"cancel_order","args":{"order_id":"..."}} -> cancel a pending order.
-{"tool":"return_order","args":{"order_id":"...","refund_method":"original"}} -> return a delivered order; refund_method is original or store_credit.
-{"tool":"change_address","args":{"order_id":"...","new_address":"..."}} -> change a pending order's shipping address.
-{"tool":"finish","args":{}} -> end the conversation.
+TOOL_HELP = """Available tool names and argument signatures:
+lookup_customer(email: string) -> customer_id.
+list_orders(customer_id: string) -> orders with order_id, item, status.
+get_order(order_id: string) -> full order details.
+cancel_order(order_id: string) -> cancel a pending order.
+return_order(order_id: string, refund_method: string) -> return a delivered order.
+  refund_method must be exactly original or store_credit, as requested by the user.
+change_address(order_id: string, new_address: string) -> change a pending order's shipping address.
+finish() -> end the conversation.
+Call format: one JSON object with keys "tool" (tool name) and "args" (argument object).
+Use the argument names in these signatures. Use an empty args object for finish.
 Rules: look up the customer first. Read get_order for an order BEFORE modifying it.
-Use list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.
+Use list_orders to discover IDs; never invent IDs or send placeholder values.
+A canceled/returned order cannot be changed.
 There are no real customers, payments, network calls, or external side effects.
 """
 

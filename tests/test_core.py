@@ -2,8 +2,9 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from sca.agents import Episode, PlanPolicy, collect, metrics, parse_json, run_model
+from sca.agents import Episode, PlanPolicy, collect, metrics, parse_action, parse_json, preflight, request_fields, run_model
 from sca.challenger import generate_llm_tasks
 from sca.cli import assert_disjoint, parser, run, successful_examples
 from sca.environment import RetailEnv, execute
@@ -85,6 +86,46 @@ class TaskTests(unittest.TestCase):
 
 
 class AgentTests(unittest.TestCase):
+    def test_one_call_can_be_recovered_without_inventing_arguments(self):
+        text = 'I will look up the customer.\n{"tool":"lookup_customer","args":{"email":"customer123@example.com"}}'
+        action, recovered = parse_action(text)
+        self.assertTrue(recovered)
+        self.assertEqual(action.args, {"email": "customer123@example.com"})
+        ep = Episode(template_task(123))
+        ep.turn(text)
+        self.assertEqual(ep.raw_responses, [text])
+        self.assertEqual(ep.format_recoveries, 1)
+        self.assertEqual(ep.errors, 0)
+        self.assertEqual(json.loads(ep.examples[0]["response"])["args"], action.args)
+
+    def test_multiple_calls_are_rejected_without_side_effects(self):
+        ep = Episode(template_task(123))
+        ep.turn('{"tool":"lookup_customer","args":{"email":"customer123@example.com"}}\n'
+                '{"tool":"cancel_order","args":{"order_id":"O123-0"}}')
+        self.assertEqual(ep.errors, 1)
+        self.assertFalse(ep.env.authenticated)
+        self.assertEqual(ep.env.orders, ep.env.initial_orders)
+
+    def test_normalization_never_repairs_an_invented_id(self):
+        ep = Episode(template_task(123))
+        ep.action("lookup_customer", email="customer123@example.com")
+        text = 'Call: {"name":"get_order","arguments":{"order_id":"invented-order"}}'
+        ep.turn(text)
+        self.assertEqual(ep.errors, 1)
+        self.assertEqual(json.loads(ep.examples[-1]["response"])["args"]["order_id"], "invented-order")
+        self.assertEqual(ep.env.orders, ep.env.initial_orders)
+
+    def test_successful_rollout_export_excludes_malformed_actions(self):
+        task = template_task(123)
+        ep = Episode(task)
+        ep.turn("I will call a tool later")
+        for action in task.solution:
+            ep.turn(json.dumps({"tool": action.tool, "args": action.args}))
+        rollout = ep.result(42, "llm")
+        self.assertEqual(rollout.reward, 1)
+        self.assertEqual(len(successful_examples([rollout])), len(task.solution))
+        self.assertEqual(rollout.raw_responses[0], "I will call a tool later")
+
     def test_executors_do_not_receive_goal_solution_or_verifier(self):
         task = template_task(123)
         ep = Episode(task)
@@ -135,6 +176,8 @@ class AgentTests(unittest.TestCase):
             successful_examples(rows)
         with self.assertRaises(ValueError):
             PlanPolicy().fit_successes(rows)
+        with self.assertRaises(ValueError):
+            preflight(test, PlanPolicy().run, 3, 42)
 
     def test_llm_challenger_validation_and_no_fallback(self):
         class ProposalBackend:
@@ -155,6 +198,62 @@ class AgentTests(unittest.TestCase):
 
 
 class CLITests(unittest.TestCase):
+    def test_llm_preflight_failure_stops_before_full_collection(self):
+        class FinishBackend:
+            def generate(self, messages, seed, temperature):
+                return '{"tool":"finish","args":{}}'
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "failed"
+            args = parser().parse_args(["llm", "--output", str(path), "--train-tasks", "6", "--test-tasks", "3"])
+            with patch("sca.llm.HFBackend.load", return_value=FinishBackend()), patch("sca.llm.train_adapter") as training:
+                self.assertEqual(run(args), 2)
+                training.assert_not_called()
+            summary = json.loads((path / "summary.json").read_text())
+            self.assertEqual(summary["status"], "preflight_failed")
+            self.assertFalse(summary["training_completed"])
+            self.assertEqual(summary["preflight"]["tasks"], 3)
+            self.assertFalse((path / "before_rollouts.jsonl").exists())
+            self.assertFalse((path / "training_rollouts.jsonl").exists())
+
+    def test_llm_orchestration_uses_self_rollouts_and_preserves_scores(self):
+        class ToolBackend:
+            def generate(self, messages, seed, temperature):
+                request = request_fields(messages[1]["content"])
+                if len(messages) == 2:
+                    value = {"tool": "lookup_customer", "args": {"email": request["email"]}}
+                else:
+                    observation = json.loads(messages[-1]["content"].removeprefix("Tool observation: "))
+                    previous = json.loads(messages[-2]["content"])["tool"]
+                    if previous == "lookup_customer":
+                        value = {"tool": "list_orders", "args": {"customer_id": observation["customer_id"]}}
+                    elif previous == "list_orders":
+                        oid = next(o["order_id"] for o in observation["orders"] if o["item"] == request["item"])
+                        value = {"tool": "get_order", "args": {"order_id": oid}}
+                    elif previous == "get_order":
+                        tool = {"cancel": "cancel_order", "return": "return_order", "address": "change_address"}[request["operation"]]
+                        args = {"order_id": observation["order_id"]}
+                        if request["operation"] == "return":
+                            args["refund_method"] = request["value"]
+                        elif request["operation"] == "address":
+                            args["new_address"] = request["value"]
+                        value = {"tool": tool, "args": args}
+                    else:
+                        value = {"tool": "finish", "args": {}}
+                return json.dumps(value)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "complete"
+            args = parser().parse_args(["llm", "--output", str(path), "--train-tasks", "6",
+                                       "--test-tasks", "3", "--rollouts", "1", "--eval-k", "1"])
+            with patch("sca.llm.HFBackend.load", return_value=ToolBackend()), patch("sca.llm.train_adapter", return_value={"test_double": True}) as training:
+                self.assertEqual(run(args), 0)
+                examples = training.call_args.args[1]
+                self.assertEqual(len(examples), 30)  # Six five-action trajectories, excluding preflight.
+                self.assertTrue(all(e["split"] == "train" for e in examples))
+            summary = json.loads((path / "summary.json").read_text())
+            self.assertTrue(summary["training_completed"])
+            self.assertEqual(summary["before"]["pass_at_1"], 1.0)
+            self.assertEqual(summary["after"]["pass_at_1"], 1.0)  # Never invent a gain.
+
     def test_demo_writes_inspectable_results(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "run"

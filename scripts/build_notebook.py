@@ -56,9 +56,12 @@ if not (Path.cwd() / "sca").is_dir():
             subprocess.run(["git", "clone", REPOSITORY, str(checkout)], check=True)
         os.chdir(checkout)
 ROOT = Path.cwd()
+if "retail-json-v2" not in (ROOT / "sca" / "agents.py").read_text():
+    raise RuntimeError("This checkout is an older version. Start a fresh Colab runtime and reopen the updated notebook.")
 RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 print("Repository:", ROOT)
 print("Python:", sys.version)
+print("Executor protocol: retail-json-v2")
 """)
 cell("markdown", """
 ## 2. Inspect a Code-as-Task example
@@ -108,7 +111,9 @@ cell("markdown", """
 
 For the remaining sections select **Runtime → Change runtime type → T4 GPU** (or another
 CUDA GPU). This downloads dependencies and model weights. It needs internet access, but no
-paid API key. The default 0.5B model is small for demonstration and may have few successes.
+paid API key. The default is now Qwen2.5-1.5B-Instruct. The earlier 0.5B run collected
+zero successful training attempts, so its fine-tuning was skipped. That result is preserved.
+CUDA loads use bfloat16 when supported, otherwise float16; CPU loads use float32.
 The pinned package versions match the repository's tested library API.
 """)
 cell("code", """
@@ -131,9 +136,13 @@ cell("markdown", """
 training, with tasks authored by the deterministic fixture generator.
 
 To exercise the full interactive **LLM challenger**, change `TASK_SOURCE` to `"llm"`.
-For task authoring, consider `Qwen/Qwen2.5-1.5B-Instruct` if your GPU has enough memory.
 The challenger explores tools and authors the request, checks, solution, and failure cases.
 Invalid proposals are rejected and saved in logs. There is no fallback to reference answers.
+
+A readiness check first runs up to three **training** tasks with the same model and settings.
+If none succeeds, the experiment stops before full baseline evaluation and rollout collection.
+Those probes are saved for diagnosis and never added to the training dataset or test scores.
+The stronger model and revised protocol are configuration changes, not evidence of learning.
 
 The same base LLM authors tasks and executes them. Training uses only its own rewarded
 training trajectories, with loss only on assistant responses. This is one offline RFT
@@ -141,14 +150,16 @@ iteration using LoRA, not PPO/GRPO or the paper's full training setup. Model imp
 an experimental question; small runs can stay flat, worsen, or collect zero successes.
 """)
 cell("code", """
-MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
 TASK_SOURCE = "template"  # Change to "llm" for interactive LLM-authored tasks.
 TRAIN_TASKS = 24
 TEST_TASKS = 12
 ROLLOUTS_PER_TRAIN_TASK = 4
 EVAL_K = 2
 TRAIN_STEPS = 40
-LLM_RUN = ROOT / "outputs" / f"llm_{TASK_SOURCE}_{RUN_ID}"
+PREFLIGHT_TASKS = 3
+# Each rerun gets its own directory, so earlier results are preserved.
+LLM_RUN = ROOT / "outputs" / f"llm_{TASK_SOURCE}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}"
 
 command = [
     sys.executable, "-m", "sca", "llm", "--output", str(LLM_RUN),
@@ -156,11 +167,12 @@ command = [
     "--train-tasks", str(TRAIN_TASKS), "--test-tasks", str(TEST_TASKS),
     "--rollouts", str(ROLLOUTS_PER_TRAIN_TASK), "--eval-k", str(EVAL_K),
     "--train-steps", str(TRAIN_STEPS), "--seed", "42",
+    "--preflight-tasks", str(PREFLIGHT_TASKS), "--max-new-tokens", "128",
 ]
 completed = subprocess.run(command, check=False)
 print("Experiment exit code:", completed.returncode)
 if completed.returncode:
-    print("Inspect the saved logs/status. Training may not have run. Do not report a missing after score as zero.")
+    print("STOPPED: training may not have run. Read the status below, then download the ZIP for diagnosis.")
 """)
 cell("markdown", """
 ## 6. Inspect measured results and individual trajectories
@@ -176,13 +188,20 @@ cell("code", """
 summary_path = LLM_RUN / "summary.json"
 if summary_path.exists():
     llm_summary = json.loads(summary_path.read_text())
+    print("RUN STATUS:", llm_summary["status"])
+    print("TRAINING COMPLETED:", llm_summary.get("training_completed", False))
+    if llm_summary.get("preflight"):
+        print("PREFLIGHT:", llm_summary["preflight"]["status"])
     print(json.dumps(llm_summary, indent=2))
-    display(SVG(filename=str(LLM_RUN / "evaluation.svg")))
+    if (LLM_RUN / "evaluation.svg").exists():
+        display(SVG(filename=str(LLM_RUN / "evaluation.svg")))
 else:
     status_path = LLM_RUN / "status.json"
     print(status_path.read_text() if status_path.exists() else "Run did not reach evaluation; inspect the command output.")
 
 rollout_path = LLM_RUN / "before_rollouts.jsonl"
+if not rollout_path.exists():
+    rollout_path = LLM_RUN / "preflight_rollouts.jsonl"
 if rollout_path.exists():
     first_rollout = json.loads(rollout_path.read_text().splitlines()[0])
     for message in first_rollout["messages"]:
@@ -199,18 +218,22 @@ weights are ignored by default. Medium/slides/video are separate assignment deli
 cell("code", """
 import shutil
 
-artifact_directory = LLM_RUN if LLM_RUN.exists() else CPU_RUN
+llm_run = globals().get("LLM_RUN")
+artifact_directory = llm_run if llm_run and llm_run.exists() else CPU_RUN
 archive_path = shutil.make_archive(str(artifact_directory), "zip", root_dir=artifact_directory)
 print("Saved:", archive_path)
-# On Colab, uncomment the next two lines to download:
-# from google.colab import files
-# files.download(archive_path)
+try:
+    from google.colab import files
+except ImportError:
+    print("Running locally: the archive is available at the path above.")
+else:
+    files.download(archive_path)
 """)
 cell("markdown", """
 ## References
 
 - Zhou et al., [Self-Challenging Language Model Agents](https://arxiv.org/abs/2506.01716), 2025.
-- [Qwen2.5-0.5B-Instruct model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct).
+- [Qwen2.5-1.5B-Instruct model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct).
 - Hugging Face [chat templates](https://huggingface.co/docs/transformers/chat_templating)
   and [PEFT quick tour](https://huggingface.co/docs/peft/quicktour).
 

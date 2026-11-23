@@ -1,0 +1,234 @@
+{
+  "slides": [
+    {
+      "slide": 1,
+      "title": "Can AI agents learn by creating their own challenges?",
+      "section": "Opening",
+      "target_seconds": 35,
+      "start_seconds": 0,
+      "end_seconds": 35,
+      "speaker_note_words": 100,
+      "sources": [
+        "https://arxiv.org/abs/2506.01716"
+      ]
+    },
+    {
+      "slide": 2,
+      "title": "A return request is a workflow",
+      "section": "01 / Motivation",
+      "target_seconds": 55,
+      "start_seconds": 35,
+      "end_seconds": 90,
+      "speaker_note_words": 126,
+      "sources": []
+    },
+    {
+      "slide": 3,
+      "title": "What changes when an agent improves?",
+      "section": "02 / Taxonomy",
+      "target_seconds": 60,
+      "start_seconds": 90,
+      "end_seconds": 150,
+      "speaker_note_words": 123,
+      "sources": [
+        "https://arxiv.org/abs/2607.13104"
+      ]
+    },
+    {
+      "slide": 4,
+      "title": "Four techniques clarify the research landscape",
+      "section": "03 / Related approaches",
+      "target_seconds": 65,
+      "start_seconds": 150,
+      "end_seconds": 215,
+      "speaker_note_words": 119,
+      "sources": [
+        "https://arxiv.org/abs/2212.10560",
+        "https://arxiv.org/abs/2210.03629",
+        "https://arxiv.org/abs/2303.11366",
+        "https://arxiv.org/abs/2402.01030"
+      ]
+    },
+    {
+      "slide": 5,
+      "title": "The paper separates two roles",
+      "section": "04 / Selected paper",
+      "target_seconds": 50,
+      "start_seconds": 215,
+      "end_seconds": 265,
+      "speaker_note_words": 109,
+      "sources": [
+        "https://arxiv.org/abs/2506.01716"
+      ]
+    },
+    {
+      "slide": 6,
+      "title": "Code-as-Task makes practice testable",
+      "section": "05 / Task validation",
+      "target_seconds": 55,
+      "start_seconds": 265,
+      "end_seconds": 320,
+      "speaker_note_words": 110,
+      "sources": [
+        "https://arxiv.org/abs/2506.01716"
+      ]
+    },
+    {
+      "slide": 7,
+      "title": "A concrete task in our retail sandbox",
+      "section": "06 / Worked example",
+      "target_seconds": 65,
+      "start_seconds": 320,
+      "end_seconds": 385,
+      "speaker_note_words": 121,
+      "sources": []
+    },
+    {
+      "slide": 8,
+      "title": "Paper results: average Pass@1",
+      "section": "07 / Published evidence",
+      "target_seconds": 65,
+      "start_seconds": 385,
+      "end_seconds": 450,
+      "speaker_note_words": 116,
+      "sources": [
+        "https://arxiv.org/abs/2506.01716"
+      ]
+    },
+    {
+      "slide": 9,
+      "title": "Paper ablations reveal engineering trade-offs",
+      "section": "08 / Published analysis",
+      "target_seconds": 55,
+      "start_seconds": 450,
+      "end_seconds": 505,
+      "speaker_note_words": 111,
+      "sources": [
+        "https://arxiv.org/abs/2506.01716"
+      ]
+    },
+    {
+      "slide": 10,
+      "title": "Our implementation has two separate execution paths",
+      "section": "09 / Companion architecture",
+      "target_seconds": 65,
+      "start_seconds": 505,
+      "end_seconds": 570,
+      "speaker_note_words": 119,
+      "sources": []
+    },
+    {
+      "slide": 11,
+      "title": "Measure outcomes and keep evaluation separate",
+      "section": "10 / Metrics and protocol",
+      "target_seconds": 60,
+      "start_seconds": 570,
+      "end_seconds": 630,
+      "speaker_note_words": 122,
+      "sources": [
+        "https://arxiv.org/abs/2406.12045",
+        "https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo"
+      ]
+    },
+    {
+      "slide": 12,
+      "title": "Measured CPU results: useful, but narrowly scoped",
+      "section": "11 / Companion evidence",
+      "target_seconds": 65,
+      "start_seconds": 630,
+      "end_seconds": 695,
+      "speaker_note_words": 134,
+      "sources": [
+        "https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo"
+      ]
+    },
+    {
+      "slide": 13,
+      "title": "Our filter ablation uses known fixture defects",
+      "section": "12 / Controlled experiment",
+      "target_seconds": 55,
+      "start_seconds": 695,
+      "end_seconds": 750,
+      "speaker_note_words": 126,
+      "sources": [
+        "https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo"
+      ]
+    },
+    {
+      "slide": 14,
+      "title": "The first LLM run exposed a tool-use bottleneck",
+      "section": "13 / First run and retry",
+      "target_seconds": 55,
+      "start_seconds": 750,
+      "end_seconds": 805,
+      "speaker_note_words": 120,
+      "sources": []
+    },
+    {
+      "slide": 15,
+      "title": "What the evidence can\u2014and cannot\u2014support",
+      "section": "14 / Limitations",
+      "target_seconds": 60,
+      "start_seconds": 805,
+      "end_seconds": 865,
+      "speaker_note_words": 126,
+      "sources": []
+    },
+    {
+      "slide": 16,
+      "title": "Three takeaways for agent developers",
+      "section": "15 / Takeaways",
+      "target_seconds": 55,
+      "start_seconds": 865,
+      "end_seconds": 920,
+      "speaker_note_words": 125,
+      "sources": []
+    },
+    {
+      "slide": 17,
+      "title": "Explore the article and reproduce the project",
+      "section": "16 / Resources",
+      "target_seconds": 35,
+      "start_seconds": 920,
+      "end_seconds": 955,
+      "speaker_note_words": 106,
+      "sources": [
+        "https://medium.com/@deepbharatbhai.dhaduk/can-ai-agents-learn-by-creating-their-own-challenges-dd7cdbf376e7",
+        "https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents",
+        "https://colab.research.google.com/github/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/blob/main/notebooks/self_challenging_agents.ipynb"
+      ]
+    },
+    {
+      "slide": 18,
+      "title": "References and evidence trail",
+      "section": "17 / Sources",
+      "target_seconds": 25,
+      "start_seconds": 955,
+      "end_seconds": 980,
+      "speaker_note_words": 83,
+      "sources": [
+        "https://arxiv.org/abs/2506.01716",
+        "https://arxiv.org/abs/2607.13104",
+        "https://arxiv.org/abs/2212.10560",
+        "https://arxiv.org/abs/2210.03629",
+        "https://arxiv.org/abs/2303.11366",
+        "https://arxiv.org/abs/2402.01030",
+        "https://arxiv.org/abs/2406.12045",
+        "https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo"
+      ]
+    }
+  ],
+  "total_target_seconds": 980,
+  "speaker_note_words": 2096,
+  "sources": {
+    "paper": "https://arxiv.org/abs/2506.01716",
+    "survey": "https://arxiv.org/abs/2607.13104",
+    "self_instruct": "https://arxiv.org/abs/2212.10560",
+    "react": "https://arxiv.org/abs/2210.03629",
+    "reflexion": "https://arxiv.org/abs/2303.11366",
+    "codeact": "https://arxiv.org/abs/2402.01030",
+    "tau_bench": "https://arxiv.org/abs/2406.12045",
+    "cpu_results": "https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo"
+  },
+  "pdf_note": "Visual edition rendered from the shared slide layout; PDF pages contain no speaker notes or hyperlinks."
+}

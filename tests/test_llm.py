@@ -88,6 +88,21 @@ class LLMTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 train_adapter(self.backend(), [{"split": "test"}], Path(tmp), max_steps=1)
 
+    def test_half_precision_base_keeps_trainable_adapter_stable(self):
+        import torch
+        from sca.llm import train_adapter
+
+        backend = self.backend()
+        backend.model.half()
+        examples = [{"split": "train", "messages": self.messages,
+                     "response": '{"tool":"finish","args":{}}'}]
+        with tempfile.TemporaryDirectory() as tmp:
+            result = train_adapter(backend, examples, Path(tmp), max_steps=1,
+                                   accumulation=1, max_length=512, rank=2)
+            self.assertTrue(all(torch.isfinite(p).all() for p in backend.model.parameters()))
+            self.assertTrue(all(p.dtype == torch.float32 for p in backend.model.parameters() if p.requires_grad))
+            self.assertEqual(result["base_parameter_dtype"], "torch.float16")
+
 
 if __name__ == "__main__":
     unittest.main()

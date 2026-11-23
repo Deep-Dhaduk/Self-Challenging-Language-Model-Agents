@@ -4,7 +4,13 @@
 
 An individual coursework implementation inspired by **[Self-Challenging Language Model Agents](https://arxiv.org/abs/2506.01716)**, Yifei Zhou, Sergey Levine, Jason Weston, Xian Li, and Sainbayar Sukhbaatar (2025).
 
-This project demonstrates a task challenger, executable task verification, tool-using executors, and learning from successful attempts. Code lives in this repository; the notebook runs that same code on Google Colab. The article, slides, and presentation will be prepared separately.
+This project demonstrates a task challenger, executable task verification, tool-using executors, and learning from successful attempts. Code lives in this repository; the notebook runs that same code on Google Colab. The video presentation will be prepared separately.
+
+**Published Medium article:** [Can AI Agents Learn by Creating Their Own Challenges?](https://medium.com/@deepbharatbhai.dhaduk/can-ai-agents-learn-by-creating-their-own-challenges-dd7cdbf376e7)
+
+**Presentation:** [PowerPoint](slides/self_challenging_agents.pptx) · [PDF](slides/self_challenging_agents.pdf) · [Speaker notes](slides/speaker_notes.txt) · [Slide overview](slides/slide_overview.png)
+
+The 18-slide presentation includes editable diagrams and charts, embedded speaker notes, and source links. Its rehearsal plan totals approximately 16 minutes 20 seconds; verify the actual recording duration. Paper findings, the measured CPU demonstration, the unsuccessful first LLM attempt, and the pending retry are explicitly distinguished. The PDF is a visual edition without speaker notes or clickable links. The files have not been published to SlideShare.
 
 ## What is implemented
 
@@ -72,13 +78,23 @@ For LLM-authored tasks, a stronger model can be selected:
 python -m sca llm --device cuda --task-source llm --model Qwen/Qwen2.5-1.5B-Instruct --train-tasks 12 --test-tasks 6 --rollouts 6 --train-steps 30 --output outputs/llm_challenger
 ```
 
-The default model is `Qwen/Qwen2.5-0.5B-Instruct`. Model downloads need internet access. No paid API service is used. The 1.5B option needs more memory and has not been benchmarked here. Models load in float32, with gradient checkpointing during training; choose a smaller model or shorter `--max-length` if memory is insufficient. Sequences longer than that limit are dropped from training, not silently cut through an answer.
+The revised default is `Qwen/Qwen2.5-1.5B-Instruct`. Model downloads need internet access. No paid API service is used. CUDA loads use bfloat16 when supported, otherwise float16; CPU loads use float32. LoRA parameters remain float32, with gradient checkpointing during training. Sequences longer than `--max-length` are dropped from training, not silently cut through an answer. The revised pretrained-model configuration still needs a Colab run; selecting a stronger model does not establish an improvement.
 
-The optional dependency versions are pinned to the locally checked Transformers/PEFT APIs. Training is a small PyTorch loop with AdamW, LoRA on query/value projections, and loss masked to assistant responses. No TRL server or external experiment-tracking account is needed. See the [model card](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct), [Transformers chat templates](https://huggingface.co/docs/transformers/chat_templating), and [PEFT quick tour](https://huggingface.co/docs/peft/quicktour).
+The optional dependency versions are pinned to the locally checked Transformers/PEFT APIs. Training is a small PyTorch loop with AdamW, LoRA on query/value projections, and loss masked to assistant responses. No TRL server or external experiment-tracking account is needed. See the [model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct), [Transformers chat templates](https://huggingface.co/docs/transformers/chat_templating), and [PEFT quick tour](https://huggingface.co/docs/peft/quicktour).
+
+### First Colab attempt and the revised protocol
+
+The first uploaded run used Qwen2.5-0.5B-Instruct with template-authored tasks. It evaluated 12 held-out tasks and collected 96 training attempts, all unsuccessful. Fine-tuning was therefore skipped and the after-training score is absent. Its unmodified [summary](results/llm_first_attempt/summary.json), [configuration](results/llm_first_attempt/config.json), [diagnostics](results/llm_first_attempt/diagnostics.json), and [original ZIP](results/llm_first_attempt/original_run.zip) are preserved. The original archive SHA-256 is recorded in the diagnostics.
+
+The logs showed invented/placeholder IDs, skipped lookup steps, and explanations mixed with tool calls. Protocol `retail-json-v2` uses explicit step-by-step tool instructions and signatures without placeholder JSON arguments. The executor can normalize exactly one unambiguous tool-call object from surrounding prose or a native `name`/`arguments` envelope. It rejects multiple calls and never invents or repairs arguments. Original model responses are retained in `raw_responses`; execution/history and successful training targets use canonical action JSON. Malformed non-action responses are excluded from training targets, even if the trajectory later succeeds. `format_recoveries` reports normalizations separately from tool/action errors.
+
+Before the long experiment, up to three **training** tasks, covering available operation types, check whether the model can complete at least one request with both a positive reward and a correct goal outcome. A failed check stops before baseline evaluation and full rollout collection. Probe conversations are saved for diagnosis and excluded from training examples and held-out scores. `--preflight-tasks 0` explicitly disables this check. Passing it is a readiness signal, not a guarantee of sufficient training data or a measured improvement.
+
+The model, prompt, parser, precision, and protocol differ from the first attempt. Treat the retry as a new configuration; only its own matched before/after evaluation can support a training-effect claim.
 
 ### When a run cannot train
 
-An LLM run returns exit code `2` if a split has no valid tasks or if it collects no rewarded training attempts. Read `status.json`, `summary.json`, and any challenger logs. Increase training attempts/tasks or try a more capable model in a **new output directory**. Do not convert an absent after-training score to zero, or describe the run as completed training. We never train on reference solutions as a hidden fallback.
+An LLM run returns exit code `2` if a split has no valid tasks, the preflight check fails, or it collects no rewarded training attempts. Read `status.json`, `summary.json`, `preflight_rollouts.jsonl`, and any challenger logs. A completed LLM update is explicitly marked `training_completed: true`; an after-training score additionally requires the final evaluation to finish. Do not convert an absent after-training score to zero. We never train on reference solutions as a hidden fallback. New notebook attempts receive fresh output directories, and the final cell downloads the ZIP automatically on Colab.
 
 If the challenger accepts fewer tasks than requested, the experiment uses the actual accepted tasks and records both requested and actual counts. Test results should be interpreted alongside sample size and the task-generation acceptance logs.
 
@@ -90,7 +106,7 @@ from sca.agents import run_model
 from sca.llm import HFBackend
 from sca.tasks import template_task
 
-backend = HFBackend.load("Qwen/Qwen2.5-0.5B-Instruct", device="auto")
+backend = HFBackend.load("Qwen/Qwen2.5-1.5B-Instruct", device="auto")
 backend.model = PeftModel.from_pretrained(backend.model, "outputs/llm_template/adapter")
 rollout = run_model(template_task(900001, "test"), backend, seed=42)
 print(rollout.success, rollout.tool_errors)
@@ -112,7 +128,7 @@ Template test tasks use fresh customer/order identities and a different request 
 
 The ablation dataset deliberately contains equal groups of valid tasks, bad reference solutions, permissive checks, and overstrict checks. Filters compare: schema only; reference-solution checking; and reference plus no-op/failure-case checking. Audit rates apply to this constructed fixture set and finite probes only. They do not measure the paper's or a language model's task-generation quality.
 
-One small run cannot establish statistical significance. LLM training may improve, worsen, or leave scores unchanged. Repeat with several seeds and larger task sets before making performance claims. Only locally run CPU and tiny random-model test results are included here; a downloaded pretrained-model GPU experiment still needs to be executed in Colab.
+One small run cannot establish statistical significance. LLM training may improve, worsen, or leave scores unchanged. Repeat with several seeds and larger task sets before making performance claims. Included evidence comprises the completed CPU demonstration, tiny random-model training checks, and the unsuccessful first Colab attempt. The revised 1.5B pretrained-model experiment is pending.
 
 ## Output files
 
@@ -121,6 +137,7 @@ One small run cannot establish statistical significance. LLM training may improv
 | `config.json` | CLI arguments and seed. |
 | `train_tasks.jsonl`, `test_tasks.jsonl` | Full task specifications with source and exploration trace. |
 | `challenger_train.jsonl`, `challenger_test.jsonl` | Accepted/rejected proposals and model conversations, for LLM task authoring. |
+| `preflight.json`, `preflight_rollouts.jsonl` | Training-only readiness check and original model responses; excluded from RFT examples and test scores. |
 | `before_rollouts.jsonl`, `after_rollouts.jsonl` | Held-out attempts before and after the update. |
 | `training_rollouts.jsonl` | All sampled training attempts, including failures. |
 | `successful_actions.jsonl` | Assistant-response training examples from rewarded training rollouts. |
@@ -162,10 +179,13 @@ sca/
   report.py           # JSON, CSV, and SVG artifacts
 notebooks/
   self_challenging_agents.ipynb
+slides/               # PowerPoint, PDF, speaker notes, and overview
 results/cpu_demo/      # Measured CPU example, clearly labeled
+results/llm_first_attempt/  # Original unsuccessful Colab run and diagnostics
 tests/                # Core and optional tiny-model smoke tests
 scripts/
   build_notebook.py   # Rebuilds the unexecuted notebook
+  build_presentation.py  # Rebuilds slides (requires python-pptx and Pillow)
 ```
 
 ## Reference

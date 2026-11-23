@@ -1,0 +1,16 @@
+{
+  "command": "llm",
+  "output": "/content/Self-Challenging-Language-Model-Agents/outputs/llm_template_20261123T112114821764Z",
+  "seed": 42,
+  "train_tasks": 24,
+  "test_tasks": 12,
+  "rollouts": 4,
+  "eval_k": 2,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "device": "cuda",
+  "task_source": "template",
+  "train_steps": 40,
+  "max_steps": 8,
+  "max_length": 2048,
+  "temperature": 0.7
+}

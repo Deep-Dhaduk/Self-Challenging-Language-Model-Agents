@@ -1,0 +1,63 @@
+{
+  "original_archive": "llm_template_20261123T112114821764Z.zip",
+  "sha256": "0e7736ad5cbbb380963aaf5a9943b6fa6cc766bc7e8ce88419870cf25995abd8",
+  "original_artifacts_unmodified": true,
+  "original_executor_protocol": "retail-json-v1 (before the retry changes)",
+  "training_attempts": 96,
+  "finish_reasons": {
+    "step_budget": 95,
+    "finished": 1
+  },
+  "training_action_errors": 717,
+  "common_training_errors": [
+    {
+      "error": "Invalid action: Expecting value: line 1 column 1 (char 0). Reply with one tool JSON object.",
+      "count": 515
+    },
+    {
+      "error": "Look up the customer first",
+      "count": 61
+    },
+    {
+      "error": "Customer not found",
+      "count": 47
+    },
+    {
+      "error": "Invalid action: Extra data: line 1 column 50 (char 49). Reply with one tool JSON object.",
+      "count": 23
+    },
+    {
+      "error": "Invalid action: Expecting property name enclosed in double quotes: line 1 column 2 (char 1). Reply with one tool JSON object.",
+      "count": 23
+    },
+    {
+      "error": "Invalid action: Missing tool name. Reply with one tool JSON object.",
+      "count": 15
+    },
+    {
+      "error": "Unknown order_id",
+      "count": 11
+    },
+    {
+      "error": "Invalid action: Extra data: line 1 column 73 (char 72). Reply with one tool JSON object.",
+      "count": 4
+    },
+    {
+      "error": "Invalid action: Extra data: line 1 column 65 (char 64). Reply with one tool JSON object.",
+      "count": 4
+    },
+    {
+      "error": "Read get_order before changing this order",
+      "count": 3
+    },
+    {
+      "error": "Invalid action: Extra data: line 1 column 90 (char 89). Reply with one tool JSON object.",
+      "count": 2
+    },
+    {
+      "error": "Invalid action: Extra data: line 1 column 120 (char 119). Reply with one tool JSON object.",
+      "count": 1
+    }
+  ],
+  "interpretation": "Actual model execution completed; zero rewarded training attempts; no adapter updates and no after-training score. This is not evidence about the revised model/prompt."
+}

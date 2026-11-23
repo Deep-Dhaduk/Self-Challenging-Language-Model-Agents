@@ -12,7 +12,23 @@ from .environment import RetailEnv, TOOL_HELP
 from .schema import Action, Task
 from .tasks import verify
 
-SYSTEM = "You are a retail assistant. Complete the user's request with the tools. " + TOOL_HELP
+EXECUTOR_PROTOCOL = "retail-json-v2"
+SYSTEM = """You are a tool-calling program in a simulated retail environment.
+Output ONLY ONE JSON tool call per turn, with keys "tool" and "args".
+Do not output explanations, plans, example calls, or imagined tool observations.
+There is no live user to answer questions; the user's request already supplies the email.
+
+Workflow:
+1. FIRST call lookup_customer, copying the exact email from the user's request.
+2. After observing customer_id, call list_orders with that returned customer_id.
+3. Match the requested item in the returned orders, then call get_order with its order_id.
+4. After reading that order, call the requested modification tool with the observed ID
+   and the exact refund method or shipping address requested. Address brackets are delimiters,
+   not part of the new address. Preserve all unrelated orders.
+5. After observing a successful modification, call finish with empty args.
+Wait for the real observation after EACH call. If a tool reports an error, correct the next
+call using the request and previous observations. Never guess IDs or use placeholders.
+""" + TOOL_HELP
 STRATEGIES = ("stop_early", "skip_inspection", "wrong_target", "wrong_value", "complete")
 
 
@@ -26,6 +42,41 @@ def parse_json(text: str) -> dict:
     if not isinstance(value, dict):
         raise ValueError("Expected one JSON object")
     return value
+
+
+def parse_action(text: str) -> tuple[Action, bool]:
+    """Recover one unambiguous call from prose; never invent arguments or run multiple calls."""
+    def convert(value):
+        if "tool" in value:
+            return Action.from_dict(value)
+        if "name" in value and "arguments" in value:
+            return Action.from_dict({"tool": value["name"], "args": value["arguments"]})
+        raise ValueError("Missing tool name")
+
+    try:
+        value = parse_json(text)
+    except (ValueError, json.JSONDecodeError):
+        pass
+    else:
+        return convert(value), "tool" not in value
+    decoder = json.JSONDecoder()
+    candidates = []
+    cursor = 0
+    while cursor < len(text):
+        start = text.find("{", cursor)
+        if start < 0:
+            break
+        try:
+            value, end = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            cursor = start + 1
+            continue
+        cursor = end
+        if isinstance(value, dict) and ("tool" in value or "name" in value):
+            candidates.append(value)
+    if len(candidates) != 1:
+        raise ValueError("Reply with exactly one JSON tool call; multiple calls are not executed")
+    return convert(candidates[0]), True
 
 
 @dataclass
@@ -42,6 +93,8 @@ class Rollout:
     finish_reason: str
     messages: list[dict]
     examples: list[dict] = field(default_factory=list)
+    raw_responses: list[str] = field(default_factory=list)
+    format_recoveries: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -55,17 +108,25 @@ class Episode:
                          {"role": "user", "content": task.instruction}]
         self.examples: list[dict] = []
         self.errors = 0
+        self.raw_responses: list[str] = []
+        self.format_recoveries = 0
 
     def turn(self, text: str) -> bool:
-        self.examples.append({"messages": copy.deepcopy(self.messages), "response": text})
-        self.messages.append({"role": "assistant", "content": text})
+        self.raw_responses.append(text)
         try:
-            action = Action.from_dict(parse_json(text))
+            action, recovered = parse_action(text)
+        except (ValueError, TypeError, KeyError) as error:
+            action, recovered = None, False
+            observation = {"error": f"Invalid action: {error}. Reply with one tool JSON object."}
+        canonical = json.dumps({"tool": action.tool, "args": action.args}) if action else text
+        self.examples.append({"messages": copy.deepcopy(self.messages), "response": canonical,
+                              "valid_action": action is not None})
+        self.messages.append({"role": "assistant", "content": canonical})
+        if action is not None:
+            self.format_recoveries += int(recovered)
             if action.tool == "finish":
                 return True
             observation = self.env.call(action)
-        except (ValueError, TypeError, KeyError, json.JSONDecodeError) as error:
-            observation = {"error": f"Invalid action: {error}. Reply with one tool JSON object."}
         self.errors += int("error" in observation)
         self.messages.append({"role": "user", "content": "Tool observation: " + json.dumps(observation)})
         return False
@@ -78,7 +139,7 @@ class Episode:
         return Rollout(self.task.task_id, self.task.split, self.task.goal.operation, strategy, seed,
                        int(verify(self.task, self.env)), self.env.goal_met(self.task.goal),
                        len(self.env.history), self.errors, reason,
-                       self.messages, self.examples)
+                       self.messages, self.examples, self.raw_responses, self.format_recoveries)
 
 
 def request_fields(instruction: str) -> dict:
@@ -153,8 +214,36 @@ def run_model(task: Task, backend, seed: int, max_steps: int = 8,
 def collect(tasks: list[Task], runner: Callable, repeats: int, seed: int) -> list[Rollout]:
     if repeats < 1:
         raise ValueError("repeats must be positive")
-    return [runner(task, seed + i * 1009 + attempt * 7919)
-            for i, task in enumerate(tasks) for attempt in range(repeats)]
+    rollouts = []
+    for i, task in enumerate(tasks):
+        for attempt in range(repeats):
+            rollouts.append(runner(task, seed + i * 1009 + attempt * 7919))
+        if len(tasks) > 3 and ((i + 1) % 5 == 0 or i + 1 == len(tasks)):
+            print(f"  {i + 1}/{len(tasks)} tasks; {sum(r.reward for r in rollouts)}/{len(rollouts)} rewarded attempts", flush=True)
+    return rollouts
+
+
+def preflight(tasks: list[Task], runner: Callable, count: int, seed: int) -> tuple[dict, list[Rollout]]:
+    """Diagnose basic execution on training tasks without accessing held-out tasks or training."""
+    if any(task.split != "train" for task in tasks):
+        raise ValueError("Preflight must use training tasks only")
+    selected = []
+    seen = set()
+    for task in tasks:
+        if task.goal.operation not in seen and len(selected) < count:
+            selected.append(task)
+            seen.add(task.goal.operation)
+    if not selected:
+        raise ValueError("Preflight requires at least one training task")
+    rollouts = collect(selected, runner, 1, seed)
+    successes = sum(r.success and bool(r.reward) for r in rollouts)
+    result = {"status": "passed" if successes else "failed", "tasks": len(selected),
+              "task_ids": [task.task_id for task in selected],
+              "successful_attempts": successes, "tool_errors": sum(r.tool_errors for r in rollouts),
+              "format_recoveries": sum(r.format_recoveries for r in rollouts),
+              "used_for_training": False,
+              "meaning": "Readiness check on training tasks, not an evaluation score or an improvement claim."}
+    return result, rollouts
 
 
 def metrics(rollouts: list[Rollout], k: int) -> dict:
@@ -173,6 +262,7 @@ def metrics(rollouts: list[Rollout], k: int) -> dict:
         "attempt_success_rate": sum(r.success for r in rollouts) / len(rollouts),
         "mean_tool_calls": calls / len(rollouts),
         "tool_errors": sum(r.tool_errors for r in rollouts),
+        "format_recoveries": sum(r.format_recoveries for r in rollouts),
         "verifier_oracle_disagreements": sum(r.reward != int(r.success) for r in rollouts),
         "by_operation": {op: sum(r.success for r in rollouts if r.operation == op) / n
                          for op, n in Counter(r.operation for r in rollouts).items()},

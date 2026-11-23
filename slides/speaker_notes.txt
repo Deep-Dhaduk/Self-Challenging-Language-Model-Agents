@@ -1,0 +1,197 @@
+PRESENTER NOTES
+Can AI Agents Learn by Creating Their Own Challenges?
+
+Timing is a rehearsal guide, not a guarantee of recorded duration.
+
+
+========================================================================
+SLIDE 01: Can AI agents learn by creating their own challenges?
+Target 00:00–00:35
+
+This presentation examines how an agent can obtain useful practice experience and how we can tell whether that experience helped. The selected research case study is connected to a broader taxonomy, then to a small companion implementation. Keep published research, measured CPU results, and the unsuccessful first LLM attempt separate. The revised LLM experiment is pending. The goal is an engineering explanation with concrete examples. Follow the story from a customer request to task validation, policy updates, and separate evaluation. The planned timing is about sixteen minutes; rehearse it before recording because reading speed and pauses determine the actual duration.
+
+Sources:
+https://arxiv.org/abs/2506.01716
+
+
+========================================================================
+SLIDE 02: A return request is a workflow
+Target 00:35–01:30
+
+Start with a familiar example. A customer wants to return headphones and receive the refund through the original payment method. The assistant has to identify the customer, find the intended order, inspect it, and apply the correct change. A fluent final sentence does not establish that these actions happened. The important evidence is the resulting state and the information returned by tools. Now think about preparing a training task for this workflow. We need a clear request, a feasible starting state, and a way to evaluate the outcome. If the supposed order does not exist, the agent cannot solve the task. If the checker ignores the refund method, the agent can receive misleading feedback. This motivates examining the entire practice pipeline, not just the final response.
+
+Sources:
+
+
+
+========================================================================
+SLIDE 03: What changes when an agent improves?
+Target 01:30–02:30
+
+The recent survey provides an organizing distinction: the underlying model can change, or the surrounding scaffold can change. A scaffold is the collection of instructions, memory, tools, and control logic around the model. This avoids treating every improvement mechanism as the same kind of training. For this presentation, use a practical diagnostic: ask what persists after the experience. Is there a weight update, a revised instruction, a stored lesson, or an altered workflow? Then ask which test would detect its contribution. A useful comparison holds other factors steady so that additional attempts or a different model are not mistaken for the effect of a particular mechanism. The taxonomy is a map for reasoning about designs; it is not a ranking of the rows.
+
+Sources:
+https://arxiv.org/abs/2607.13104
+
+
+========================================================================
+SLIDE 04: Four techniques clarify the research landscape
+Target 02:30–03:35
+
+These approaches illuminate different design choices. Self-Instruct generates instruction examples and filters them before fine-tuning. ReAct interleaves reasoning and actions so that external observations can inform execution. Reflexion retains textual feedback in memory for later attempts without changing model weights. CodeAct represents actions using executable code. Read each method in terms of its purpose, rather than treating their scores as entries on one shared leaderboard. Their original experiments differ in tasks, models, and evaluation settings. The engineering comparison on this slide therefore describes mechanisms. For a fair performance ranking, we would need matched tasks, a common evaluation protocol, and comparable resource budgets. This distinction is especially important when an article draws from several papers to explain one research area.
+
+Sources:
+https://arxiv.org/abs/2212.10560
+https://arxiv.org/abs/2210.03629
+https://arxiv.org/abs/2303.11366
+https://arxiv.org/abs/2402.01030
+
+
+========================================================================
+SLIDE 05: The paper separates two roles
+Target 03:35–04:25
+
+Think of this separation as a way to make the practice process inspectable. One responsibility concerns preparing experience, and the other concerns acting on a request. An engineering review can inspect the material before it affects the executor. A useful question for the audience is where a defect would enter: during creation of the request, evaluation of the outcome, or selection of actions. Separating those responsibilities makes that question easier to investigate. The educational companion will expose corresponding artifacts so that an example can be followed across the pipeline. This is an architectural interpretation, not a claim that the system can improve indefinitely or operate without a designed environment.
+
+Sources:
+https://arxiv.org/abs/2506.01716
+
+
+========================================================================
+SLIDE 06: Code-as-Task makes practice testable
+Target 04:25–05:20
+
+For our engineering discussion, imagine reviewing a task package before accepting it. Can we demonstrate that the expected behavior is possible? Can we show that plausible wrong outcomes are rejected? These are useful review questions because a checker can run successfully while expressing the wrong condition. The companion implementation turns these questions into an inspectable fixture. Its check specification is interpreted by trusted code, rather than executing arbitrary generated Python. That implementation choice is a deliberate simplification. It lets the demonstration focus on the quality of feedback. Even then, a small collection of examples is incomplete evidence: an untested wrong outcome may still pass, and natural-language intent may remain ambiguous.
+
+Sources:
+https://arxiv.org/abs/2506.01716
+
+
+========================================================================
+SLIDE 07: A concrete task in our retail sandbox
+Target 05:20–06:25
+
+Walk through this example slowly. The request identifies the product and refund choice. The executor begins with the customer email, asks for orders, inspects the relevant one, and applies a return. The reference sequence belongs to the task package and is not placed in the executor's prompt. Next, consider three ways this can go wrong. Doing nothing should fail. Stopping after inspection should fail. Returning to the wrong payment destination should fail. There is one more condition worth emphasizing: other orders must remain unchanged. That condition makes the evaluator more demanding than checking for a return call. A complete demonstration should show both the conversation and the final state. All customers, orders, and actions here are simulated and reset between attempts.
+
+Sources:
+
+
+
+========================================================================
+SLIDE 08: Paper results: average Pass@1
+Target 06:25–07:30
+
+Read this as a comparison within the authors' experiment. The three values represent different settings, so the stronger-teacher setting should not be described as autonomous improvement with no stronger model. Percentage-point changes and relative percentage changes also mean different things. For example, the difference between two percentages is an absolute percentage-point gain; dividing that change by the starting value yields a relative gain. More generally, an average can hide variation among domains, so a reviewer should consult the domain breakdown before drawing deployment conclusions. This slide is a historical paper result. It is not a current leaderboard and it is not the output of our repository. The companion results appear later with their own experiment identity.
+
+Sources:
+https://arxiv.org/abs/2506.01716
+
+
+========================================================================
+SLIDE 09: Paper ablations reveal engineering trade-offs
+Target 07:30–08:25
+
+An ablation should tell us which design decision changes an outcome. The first result on this slide concerns acceptance of generated practice material; the second concerns a task-success measurement in a particular experiment. They use different denominators and must not be plotted as though they measure the same thing. From an engineering perspective, stricter filtering introduces a quality-versus-yield question. If accepted material becomes scarce, the cost per useful example can rise. A more involved optimizer introduces another question: does its gain justify infrastructure and tuning effort? In a small coursework implementation, a simple inspectable baseline is valuable before expanding complexity. These are practical interpretations of the evidence, not new experimental findings.
+
+Sources:
+https://arxiv.org/abs/2506.01716
+
+
+========================================================================
+SLIDE 10: Our implementation has two separate execution paths
+Target 08:25–09:30
+
+The repository intentionally makes the educational baseline distinct from language-model execution. The CPU path samples among five hand-written strategies and updates their probabilities from rewards. The optional language-model path generates actual tool calls using a Hugging Face model and contains response-only LoRA training. Each run records which path produced its results. Within the language-model path, task generation is also explicit: templates provide an initial smoke configuration, while an optional interactive challenger can author tasks. Neither task source is silently substituted for the other. Tasks, conversations, selected training examples, metrics, and configuration are saved. This structure supports tracing a reported result back to the actual attempts and avoids presenting a lightweight demonstration as a reproduction of a large benchmark experiment.
+
+Sources:
+
+
+
+========================================================================
+SLIDE 11: Measure outcomes and keep evaluation separate
+Target 09:30–10:30
+
+Pass at one and pass at four answer different questions in our experiment. The first uses the first sampled attempt for each test task. The second asks whether any of four attempts succeeded. A high pass-at-four score does not establish that the agent succeeds consistently on every attempt. TauBench separately introduced pass-hat-k for all-k-trials reliability, so the symbols should not be used interchangeably. The companion evaluator checks the requested goal and unchanged unrelated state. Its result is compared with the task verifier's reward, and disagreements are logged. Before and after evaluation uses the same test set and sampling settings. Training uses only training rollouts; neither test conversations nor reference solutions become hidden training examples. This protects the meaning of the before-and-after comparison.
+
+Sources:
+https://arxiv.org/abs/2406.12045
+https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo
+
+
+========================================================================
+SLIDE 12: Measured CPU results: useful, but narrowly scoped
+Target 10:30–11:35
+
+This chart comes from the saved CPU example run. The setup contains one hundred and twenty training tasks, four attempts per training task, and sixty held-out test tasks. It is a categorical policy over five existing strategies. Successful training attempts increase the sampling weight of the strategy that generated them. The chart therefore shows learning to select a useful existing workflow more often; it does not show a language model inventing the workflow. Explain the pass-at-four value carefully: every test task had at least one success among its four updated-policy attempts, but some individual attempts still failed. Tool errors decreased, while mean tool calls increased because an effective workflow usually performs more work than stopping early. These results have one seed and a limited synthetic task family, so they do not establish broad generalization.
+
+Sources:
+https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo
+
+
+========================================================================
+SLIDE 13: Our filter ablation uses known fixture defects
+Target 11:35–12:30
+
+This experiment tests the filtering code with deliberate defects, not the natural error distribution of a language model. There are forty-eight candidate fixtures: twelve valid, twelve with bad reference solutions, twelve with permissive checks, and twelve with overstrict checks. Requiring only a valid schema keeps all of them. Requiring the reference solution to pass removes some defects, but can retain a verifier that accepts anything. Testing no-ops and failure cases addresses that particular weakness. In this constructed set, the final stage retains the twelve valid fixtures. That does not mean its precision will remain perfect on new tasks. The probe set is finite, and the accepted subsets differ between filters. Interpret the counts as a controlled code demonstration rather than an estimate of production task quality.
+
+Sources:
+https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo
+
+
+========================================================================
+SLIDE 14: The first LLM run exposed a tool-use bottleneck
+Target 12:30–13:25
+
+The first Colab run used Qwen2.5-0.5B-Instruct on template-authored tasks. It completed baseline evaluation and sampled ninety-six training attempts, but none earned a reward. The code correctly skipped adapter training. Logs showed invented order IDs, missed lookup steps, and explanations where a tool call was required. The original ZIP and summary are preserved. The revised configuration uses Qwen2.5-1.5B-Instruct, explicit workflow instructions, and a short training-only readiness check. A parser accepts one unambiguous action but does not repair its arguments; raw responses are retained. These changes define a new experimental configuration, not a demonstrated learning gain. Its own before-and-after evaluation is still pending. Any later improvement must be attributed carefully because model and protocol changes cannot be isolated from this single retry.
+
+Sources:
+
+
+
+========================================================================
+SLIDE 15: What the evidence can—and cannot—support
+Target 13:25–14:25
+
+There are three boundaries I would keep visible when presenting the project. First, task tests cover examples, not every possible interpretation of an instruction. A reward can therefore be wrong even when the checker executes without error. Second, the companion CPU task family is intentionally narrow, and a single seed provides limited evidence. The useful next step is a larger independent test set and additional seeds, rather than a stronger claim about the same small run. Third, improvement must be assessed alongside resources. Rejecting many proposals, sampling more attempts, and making longer tool conversations can increase cost. My engineering interpretation is that the evaluator itself needs an audit. Record reward disagreements and inspect complete trajectories so that a score increase can be connected to intended behavior.
+
+Sources:
+
+
+
+========================================================================
+SLIDE 16: Three takeaways for agent developers
+Target 14:25–15:20
+
+The first takeaway is to make practice material inspectable. Saving a task specification and its validation evidence makes it possible to diagnose bad feedback before an update is trusted. The second takeaway is to keep experimental identities clear. A categorical strategy policy, a pretrained language model, and a teacher-distillation setup answer different questions. A demonstration is useful when its claims match what it actually measures. The third takeaway is to preserve an independent evaluation boundary. Record the conditions and compare outcomes under the same test protocol, while tracking cost and disagreement. These choices make results easier to reproduce and critique. For the project, the next milestone is to run the pretrained-model experiment, then report what happened even if the measured score stays flat or decreases.
+
+Sources:
+
+
+
+========================================================================
+SLIDE 17: Explore the article and reproduce the project
+Target 15:20–15:55
+
+These links connect the research explanation to the actual artifacts. The Medium article contains the narrative, the repository contains code and the measured CPU example, and the Colab notebook runs that code. The links are clickable in the PowerPoint and in the notes file. When recording, briefly show the repository structure or a saved trajectory if time allows. Save the executed notebook and run artifacts after the next experiment. Publishing slides and recording the presentation are separate assignment steps; generating this file does not publish it to SlideShare or create a video. The planned talk is about sixteen minutes, but verify the recorded duration before submission.
+
+Sources:
+https://medium.com/@deepbharatbhai.dhaduk/can-ai-agents-learn-by-creating-their-own-challenges-dd7cdbf376e7
+https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents
+https://colab.research.google.com/github/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/blob/main/notebooks/self_challenging_agents.ipynb
+
+
+========================================================================
+SLIDE 18: References and evidence trail
+Target 15:55–16:20
+
+The primary case study, supporting survey, and related-method papers are listed here with direct links. The full source list also appears in the notes and the slide manifest. Consult the original papers for their experimental conditions. The CPU numbers come from saved repository artifacts, not from the research papers. This closes the evidence trail from source, to educational implementation, to reported result. Allow a short pause for questions or a final demonstration, and verify that the recorded presentation meets the assignment's minimum duration.
+
+Sources:
+https://arxiv.org/abs/2506.01716
+https://arxiv.org/abs/2607.13104
+https://arxiv.org/abs/2212.10560
+https://arxiv.org/abs/2210.03629
+https://arxiv.org/abs/2303.11366
+https://arxiv.org/abs/2402.01030
+https://arxiv.org/abs/2406.12045
+https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/results/cpu_demo

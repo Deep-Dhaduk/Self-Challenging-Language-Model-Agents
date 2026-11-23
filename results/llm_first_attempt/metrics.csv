@@ -1,0 +1,2 @@
+stage,tasks,attempts_per_task,pass_at_1,pass_at_2,attempt_success_rate,mean_tool_calls,tool_errors,verifier_oracle_disagreements
+before,12,2,0.0,0.0,0.0,1.4583333333333333,178,0

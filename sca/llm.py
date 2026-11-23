@@ -5,28 +5,39 @@ import json
 import random
 from pathlib import Path
 
-DEFAULT_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+DEFAULT_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
 
 
 class HFBackend:
-    def __init__(self, model, tokenizer, max_new_tokens: int = 192):
+    def __init__(self, model, tokenizer, max_new_tokens: int = 128):
         self.model = model
         self.tokenizer = tokenizer
         self.max_new_tokens = max_new_tokens
         if tokenizer.pad_token_id is None:
             tokenizer.pad_token = tokenizer.eos_token
 
+    @property
+    def runtime_info(self) -> dict:
+        parameter = next(self.model.parameters())
+        return {"device": str(parameter.device), "parameter_dtype": str(parameter.dtype),
+                "max_new_tokens": self.max_new_tokens}
+
     @classmethod
     def load(cls, model_id: str = DEFAULT_MODEL, device: str = "auto",
-             max_new_tokens: int = 192) -> "HFBackend":
+             max_new_tokens: int = 128) -> "HFBackend":
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         if device == "auto":
             device = "cuda" if torch.cuda.is_available() else "cpu"
+        dtype = torch.float32
+        if device == "cuda":
+            if not torch.cuda.is_available():
+                raise ValueError("CUDA is unavailable. Select a GPU runtime before starting this run.")
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModelForCausalLM.from_pretrained(
-            model_id, torch_dtype=torch.float32, attn_implementation="eager",
+            model_id, torch_dtype=dtype, attn_implementation="sdpa",
         ).to(device)
         return cls(model, tokenizer, max_new_tokens)
 
@@ -114,7 +125,7 @@ def train_adapter(backend: HFBackend, examples: list[dict], output: Path,
                 raise RuntimeError("Nonfinite training loss; adapter was not saved")
             (loss / accumulation).backward()
             total_loss += float(loss.detach()) / accumulation
-        torch.nn.utils.clip_grad_norm_(parameters, 1.0)
+        torch.nn.utils.clip_grad_norm_(parameters, 1.0, error_if_nonfinite=True)
         optimizer.step()
         losses.append({"step": step + 1, "loss": total_loss})
         if (step + 1) % 10 == 0 or step == 0 or step + 1 == max_steps:
@@ -131,6 +142,7 @@ def train_adapter(backend: HFBackend, examples: list[dict], output: Path,
               "input_examples": len(examples), "used_examples": len(rows),
               "dropped_long_examples": len(examples) - len(rows),
               "response_only_loss": True,
+              "device": str(device), "base_parameter_dtype": str(next(model.parameters()).dtype),
               "trainable_parameters": sum(p.numel() for p in parameters),
               "loss": losses}
     (output / "training_summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
