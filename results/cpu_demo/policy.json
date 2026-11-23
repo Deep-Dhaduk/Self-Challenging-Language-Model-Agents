@@ -1,0 +1,23 @@
+{
+  "cancel": {
+    "stop_early": 1.0,
+    "skip_inspection": 1.0,
+    "wrong_target": 1.0,
+    "wrong_value": 1.0,
+    "complete": 28.0
+  },
+  "return": {
+    "stop_early": 1.0,
+    "skip_inspection": 1.0,
+    "wrong_target": 1.0,
+    "wrong_value": 1.0,
+    "complete": 28.0
+  },
+  "address": {
+    "stop_early": 1.0,
+    "skip_inspection": 1.0,
+    "wrong_target": 1.0,
+    "wrong_value": 1.0,
+    "complete": 51.0
+  }
+}

@@ -1,0 +1,4 @@
+filter,candidates,accepted,acceptance_rate,probe_count,true_positive,true_negative,false_positive,false_negative,probe_agreement,source
+instruction_only,48,48,1.0,288,60,156,48,24,0.75,controlled fixture corruption; not an LLM ablation
+solution,48,24,0.5,144,48,48,48,0,0.6666666666666666,controlled fixture corruption; not an LLM ablation
+full,48,12,0.25,72,24,48,0,0,1.0,controlled fixture corruption; not an LLM ablation

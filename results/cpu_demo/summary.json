@@ -1,0 +1,54 @@
+{
+  "status": "complete",
+  "backend": "tabular",
+  "model": "categorical policy over five scripted strategies",
+  "task_source": "template",
+  "seed": 42,
+  "python": "3.13.6",
+  "versions": {},
+  "requested_train_tasks": 120,
+  "requested_test_tasks": 60,
+  "valid_train_tasks": 120,
+  "valid_test_tasks": 60,
+  "training_rollouts": 480,
+  "rewarded_training_rollouts": 104,
+  "successful_action_examples": 520,
+  "training_reward_oracle_disagreements": 0,
+  "before": {
+    "tasks": 60,
+    "attempts_per_task": 4,
+    "pass_at_1": 0.23333333333333334,
+    "pass_at_4": 0.7333333333333333,
+    "attempt_success_rate": 0.2791666666666667,
+    "mean_tool_calls": 3.216666666666667,
+    "tool_errors": 75,
+    "verifier_oracle_disagreements": 0,
+    "by_operation": {
+      "address": 0.3,
+      "cancel": 0.3125,
+      "return": 0.225
+    }
+  },
+  "after": {
+    "tasks": 60,
+    "attempts_per_task": 4,
+    "pass_at_1": 0.8666666666666667,
+    "pass_at_4": 1.0,
+    "attempt_success_rate": 0.9208333333333333,
+    "mean_tool_calls": 3.8625,
+    "tool_errors": 7,
+    "verifier_oracle_disagreements": 0,
+    "by_operation": {
+      "address": 0.925,
+      "cancel": 0.9,
+      "return": 0.9375
+    }
+  },
+  "limitations": [
+    "Synthetic retail environment, not M3ToolEval or TauBench.",
+    "A single seed and small sample do not establish statistical significance.",
+    "Verifier checks do not prove natural-language instruction alignment."
+  ],
+  "training_method": "success-count update of categorical strategy probabilities; not LLM training",
+  "elapsed_seconds": 0.4935692999861203
+}

@@ -1,0 +1,192 @@
+{
+  "task_id": "train-4210000",
+  "split": "train",
+  "env_seed": 4210000,
+  "instruction": "My email is customer4210000@example.com. Return my speaker order and use store_credit as the refund method. Leave my other orders unchanged.",
+  "goal": {
+    "order_id": "O4210000-1",
+    "operation": "return",
+    "value": "store_credit"
+  },
+  "checks": [
+    {
+      "order_id": "O4210000-1",
+      "field": "status",
+      "equals": "returned"
+    },
+    {
+      "order_id": "O4210000-1",
+      "field": "refund_method",
+      "equals": "store_credit"
+    },
+    {
+      "order_id": "O4210000-0",
+      "field": "status",
+      "equals": "pending"
+    },
+    {
+      "order_id": "O4210000-0",
+      "field": "refund_method",
+      "equals": ""
+    },
+    {
+      "order_id": "O4210000-0",
+      "field": "address",
+      "equals": "1 Oak Street"
+    },
+    {
+      "order_id": "O4210000-1",
+      "field": "address",
+      "equals": "41 Oak Street"
+    },
+    {
+      "order_id": "O4210000-2",
+      "field": "status",
+      "equals": "pending"
+    },
+    {
+      "order_id": "O4210000-2",
+      "field": "refund_method",
+      "equals": ""
+    },
+    {
+      "order_id": "O4210000-2",
+      "field": "address",
+      "equals": "80 Oak Street"
+    }
+  ],
+  "solution": [
+    {
+      "tool": "lookup_customer",
+      "args": {
+        "email": "customer4210000@example.com"
+      }
+    },
+    {
+      "tool": "list_orders",
+      "args": {
+        "customer_id": "C4210000"
+      }
+    },
+    {
+      "tool": "get_order",
+      "args": {
+        "order_id": "O4210000-1"
+      }
+    },
+    {
+      "tool": "return_order",
+      "args": {
+        "order_id": "O4210000-1",
+        "refund_method": "store_credit"
+      }
+    }
+  ],
+  "failure_cases": [
+    [],
+    [
+      {
+        "tool": "lookup_customer",
+        "args": {
+          "email": "customer4210000@example.com"
+        }
+      },
+      {
+        "tool": "list_orders",
+        "args": {
+          "customer_id": "C4210000"
+        }
+      },
+      {
+        "tool": "get_order",
+        "args": {
+          "order_id": "O4210000-1"
+        }
+      }
+    ],
+    [
+      {
+        "tool": "lookup_customer",
+        "args": {
+          "email": "customer4210000@example.com"
+        }
+      },
+      {
+        "tool": "list_orders",
+        "args": {
+          "customer_id": "C4210000"
+        }
+      },
+      {
+        "tool": "get_order",
+        "args": {
+          "order_id": "O4210000-1"
+        }
+      },
+      {
+        "tool": "return_order",
+        "args": {
+          "order_id": "O4210000-1",
+          "refund_method": "original"
+        }
+      }
+    ]
+  ],
+  "source": "template",
+  "exploration": [
+    {
+      "action": {
+        "tool": "lookup_customer",
+        "args": {
+          "email": "customer4210000@example.com"
+        }
+      },
+      "observation": {
+        "customer_id": "C4210000"
+      }
+    },
+    {
+      "action": {
+        "tool": "list_orders",
+        "args": {
+          "customer_id": "C4210000"
+        }
+      },
+      "observation": {
+        "orders": [
+          {
+            "order_id": "O4210000-0",
+            "item": "backpack",
+            "status": "pending"
+          },
+          {
+            "order_id": "O4210000-1",
+            "item": "speaker",
+            "status": "delivered"
+          },
+          {
+            "order_id": "O4210000-2",
+            "item": "keyboard",
+            "status": "pending"
+          }
+        ]
+      }
+    },
+    {
+      "action": {
+        "tool": "get_order",
+        "args": {
+          "order_id": "O4210000-1"
+        }
+      },
+      "observation": {
+        "order_id": "O4210000-1",
+        "item": "speaker",
+        "status": "delivered",
+        "address": "41 Oak Street",
+        "refund_method": "",
+        "return_eligible": true
+      }
+    }
+  ]
+}

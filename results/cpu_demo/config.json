@@ -1,0 +1,9 @@
+{
+  "command": "demo",
+  "output": "outputs\\cpu_reference",
+  "seed": 42,
+  "train_tasks": 120,
+  "test_tasks": 60,
+  "rollouts": 4,
+  "eval_k": 4
+}

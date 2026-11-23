@@ -1,0 +1,205 @@
+{
+  "task_id": "test-204200000",
+  "split": "test",
+  "operation": "address",
+  "strategy": "complete",
+  "seed": 8000042,
+  "reward": 1,
+  "success": true,
+  "tool_calls": 4,
+  "tool_errors": 0,
+  "finish_reason": "finished",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a retail assistant. Complete the user's request with the tools. Available tools (one JSON object per turn):\n{\"tool\":\"lookup_customer\",\"args\":{\"email\":\"...\"}} -> customer_id.\n{\"tool\":\"list_orders\",\"args\":{\"customer_id\":\"...\"}} -> order_id, item, status.\n{\"tool\":\"get_order\",\"args\":{\"order_id\":\"...\"}} -> full order details.\n{\"tool\":\"cancel_order\",\"args\":{\"order_id\":\"...\"}} -> cancel a pending order.\n{\"tool\":\"return_order\",\"args\":{\"order_id\":\"...\",\"refund_method\":\"original\"}} -> return a delivered order; refund_method is original or store_credit.\n{\"tool\":\"change_address\",\"args\":{\"order_id\":\"...\",\"new_address\":\"...\"}} -> change a pending order's shipping address.\n{\"tool\":\"finish\",\"args\":{}} -> end the conversation.\nRules: look up the customer first. Read get_order for an order BEFORE modifying it.\nUse list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.\nThere are no real customers, payments, network calls, or external side effects.\n"
+    },
+    {
+      "role": "user",
+      "content": "Please help: Change the shipping address for my headphones order to [100 Pine Avenue]. Contact email: customer204200000@example.com. Leave my other orders unchanged."
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool\": \"lookup_customer\", \"args\": {\"email\": \"customer204200000@example.com\"}}"
+    },
+    {
+      "role": "user",
+      "content": "Tool observation: {\"customer_id\": \"C204200000\"}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool\": \"list_orders\", \"args\": {\"customer_id\": \"C204200000\"}}"
+    },
+    {
+      "role": "user",
+      "content": "Tool observation: {\"orders\": [{\"order_id\": \"O204200000-0\", \"item\": \"keyboard\", \"status\": \"pending\"}, {\"order_id\": \"O204200000-1\", \"item\": \"backpack\", \"status\": \"delivered\"}, {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\"}]}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool\": \"get_order\", \"args\": {\"order_id\": \"O204200000-2\"}}"
+    },
+    {
+      "role": "user",
+      "content": "Tool observation: {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\", \"address\": \"99 Oak Street\", \"refund_method\": \"\", \"return_eligible\": false}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool\": \"change_address\", \"args\": {\"order_id\": \"O204200000-2\", \"new_address\": \"100 Pine Avenue\"}}"
+    },
+    {
+      "role": "user",
+      "content": "Tool observation: {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\", \"address\": \"100 Pine Avenue\", \"refund_method\": \"\", \"return_eligible\": false}"
+    },
+    {
+      "role": "assistant",
+      "content": "{\"tool\":\"finish\",\"args\":{}}"
+    }
+  ],
+  "examples": [
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a retail assistant. Complete the user's request with the tools. Available tools (one JSON object per turn):\n{\"tool\":\"lookup_customer\",\"args\":{\"email\":\"...\"}} -> customer_id.\n{\"tool\":\"list_orders\",\"args\":{\"customer_id\":\"...\"}} -> order_id, item, status.\n{\"tool\":\"get_order\",\"args\":{\"order_id\":\"...\"}} -> full order details.\n{\"tool\":\"cancel_order\",\"args\":{\"order_id\":\"...\"}} -> cancel a pending order.\n{\"tool\":\"return_order\",\"args\":{\"order_id\":\"...\",\"refund_method\":\"original\"}} -> return a delivered order; refund_method is original or store_credit.\n{\"tool\":\"change_address\",\"args\":{\"order_id\":\"...\",\"new_address\":\"...\"}} -> change a pending order's shipping address.\n{\"tool\":\"finish\",\"args\":{}} -> end the conversation.\nRules: look up the customer first. Read get_order for an order BEFORE modifying it.\nUse list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.\nThere are no real customers, payments, network calls, or external side effects.\n"
+        },
+        {
+          "role": "user",
+          "content": "Please help: Change the shipping address for my headphones order to [100 Pine Avenue]. Contact email: customer204200000@example.com. Leave my other orders unchanged."
+        }
+      ],
+      "response": "{\"tool\": \"lookup_customer\", \"args\": {\"email\": \"customer204200000@example.com\"}}"
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a retail assistant. Complete the user's request with the tools. Available tools (one JSON object per turn):\n{\"tool\":\"lookup_customer\",\"args\":{\"email\":\"...\"}} -> customer_id.\n{\"tool\":\"list_orders\",\"args\":{\"customer_id\":\"...\"}} -> order_id, item, status.\n{\"tool\":\"get_order\",\"args\":{\"order_id\":\"...\"}} -> full order details.\n{\"tool\":\"cancel_order\",\"args\":{\"order_id\":\"...\"}} -> cancel a pending order.\n{\"tool\":\"return_order\",\"args\":{\"order_id\":\"...\",\"refund_method\":\"original\"}} -> return a delivered order; refund_method is original or store_credit.\n{\"tool\":\"change_address\",\"args\":{\"order_id\":\"...\",\"new_address\":\"...\"}} -> change a pending order's shipping address.\n{\"tool\":\"finish\",\"args\":{}} -> end the conversation.\nRules: look up the customer first. Read get_order for an order BEFORE modifying it.\nUse list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.\nThere are no real customers, payments, network calls, or external side effects.\n"
+        },
+        {
+          "role": "user",
+          "content": "Please help: Change the shipping address for my headphones order to [100 Pine Avenue]. Contact email: customer204200000@example.com. Leave my other orders unchanged."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"lookup_customer\", \"args\": {\"email\": \"customer204200000@example.com\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"customer_id\": \"C204200000\"}"
+        }
+      ],
+      "response": "{\"tool\": \"list_orders\", \"args\": {\"customer_id\": \"C204200000\"}}"
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a retail assistant. Complete the user's request with the tools. Available tools (one JSON object per turn):\n{\"tool\":\"lookup_customer\",\"args\":{\"email\":\"...\"}} -> customer_id.\n{\"tool\":\"list_orders\",\"args\":{\"customer_id\":\"...\"}} -> order_id, item, status.\n{\"tool\":\"get_order\",\"args\":{\"order_id\":\"...\"}} -> full order details.\n{\"tool\":\"cancel_order\",\"args\":{\"order_id\":\"...\"}} -> cancel a pending order.\n{\"tool\":\"return_order\",\"args\":{\"order_id\":\"...\",\"refund_method\":\"original\"}} -> return a delivered order; refund_method is original or store_credit.\n{\"tool\":\"change_address\",\"args\":{\"order_id\":\"...\",\"new_address\":\"...\"}} -> change a pending order's shipping address.\n{\"tool\":\"finish\",\"args\":{}} -> end the conversation.\nRules: look up the customer first. Read get_order for an order BEFORE modifying it.\nUse list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.\nThere are no real customers, payments, network calls, or external side effects.\n"
+        },
+        {
+          "role": "user",
+          "content": "Please help: Change the shipping address for my headphones order to [100 Pine Avenue]. Contact email: customer204200000@example.com. Leave my other orders unchanged."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"lookup_customer\", \"args\": {\"email\": \"customer204200000@example.com\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"customer_id\": \"C204200000\"}"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"list_orders\", \"args\": {\"customer_id\": \"C204200000\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"orders\": [{\"order_id\": \"O204200000-0\", \"item\": \"keyboard\", \"status\": \"pending\"}, {\"order_id\": \"O204200000-1\", \"item\": \"backpack\", \"status\": \"delivered\"}, {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\"}]}"
+        }
+      ],
+      "response": "{\"tool\": \"get_order\", \"args\": {\"order_id\": \"O204200000-2\"}}"
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a retail assistant. Complete the user's request with the tools. Available tools (one JSON object per turn):\n{\"tool\":\"lookup_customer\",\"args\":{\"email\":\"...\"}} -> customer_id.\n{\"tool\":\"list_orders\",\"args\":{\"customer_id\":\"...\"}} -> order_id, item, status.\n{\"tool\":\"get_order\",\"args\":{\"order_id\":\"...\"}} -> full order details.\n{\"tool\":\"cancel_order\",\"args\":{\"order_id\":\"...\"}} -> cancel a pending order.\n{\"tool\":\"return_order\",\"args\":{\"order_id\":\"...\",\"refund_method\":\"original\"}} -> return a delivered order; refund_method is original or store_credit.\n{\"tool\":\"change_address\",\"args\":{\"order_id\":\"...\",\"new_address\":\"...\"}} -> change a pending order's shipping address.\n{\"tool\":\"finish\",\"args\":{}} -> end the conversation.\nRules: look up the customer first. Read get_order for an order BEFORE modifying it.\nUse list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.\nThere are no real customers, payments, network calls, or external side effects.\n"
+        },
+        {
+          "role": "user",
+          "content": "Please help: Change the shipping address for my headphones order to [100 Pine Avenue]. Contact email: customer204200000@example.com. Leave my other orders unchanged."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"lookup_customer\", \"args\": {\"email\": \"customer204200000@example.com\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"customer_id\": \"C204200000\"}"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"list_orders\", \"args\": {\"customer_id\": \"C204200000\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"orders\": [{\"order_id\": \"O204200000-0\", \"item\": \"keyboard\", \"status\": \"pending\"}, {\"order_id\": \"O204200000-1\", \"item\": \"backpack\", \"status\": \"delivered\"}, {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\"}]}"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"get_order\", \"args\": {\"order_id\": \"O204200000-2\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\", \"address\": \"99 Oak Street\", \"refund_method\": \"\", \"return_eligible\": false}"
+        }
+      ],
+      "response": "{\"tool\": \"change_address\", \"args\": {\"order_id\": \"O204200000-2\", \"new_address\": \"100 Pine Avenue\"}}"
+    },
+    {
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are a retail assistant. Complete the user's request with the tools. Available tools (one JSON object per turn):\n{\"tool\":\"lookup_customer\",\"args\":{\"email\":\"...\"}} -> customer_id.\n{\"tool\":\"list_orders\",\"args\":{\"customer_id\":\"...\"}} -> order_id, item, status.\n{\"tool\":\"get_order\",\"args\":{\"order_id\":\"...\"}} -> full order details.\n{\"tool\":\"cancel_order\",\"args\":{\"order_id\":\"...\"}} -> cancel a pending order.\n{\"tool\":\"return_order\",\"args\":{\"order_id\":\"...\",\"refund_method\":\"original\"}} -> return a delivered order; refund_method is original or store_credit.\n{\"tool\":\"change_address\",\"args\":{\"order_id\":\"...\",\"new_address\":\"...\"}} -> change a pending order's shipping address.\n{\"tool\":\"finish\",\"args\":{}} -> end the conversation.\nRules: look up the customer first. Read get_order for an order BEFORE modifying it.\nUse list_orders to discover IDs; never invent IDs. A canceled/returned order cannot be changed.\nThere are no real customers, payments, network calls, or external side effects.\n"
+        },
+        {
+          "role": "user",
+          "content": "Please help: Change the shipping address for my headphones order to [100 Pine Avenue]. Contact email: customer204200000@example.com. Leave my other orders unchanged."
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"lookup_customer\", \"args\": {\"email\": \"customer204200000@example.com\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"customer_id\": \"C204200000\"}"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"list_orders\", \"args\": {\"customer_id\": \"C204200000\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"orders\": [{\"order_id\": \"O204200000-0\", \"item\": \"keyboard\", \"status\": \"pending\"}, {\"order_id\": \"O204200000-1\", \"item\": \"backpack\", \"status\": \"delivered\"}, {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\"}]}"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"get_order\", \"args\": {\"order_id\": \"O204200000-2\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\", \"address\": \"99 Oak Street\", \"refund_method\": \"\", \"return_eligible\": false}"
+        },
+        {
+          "role": "assistant",
+          "content": "{\"tool\": \"change_address\", \"args\": {\"order_id\": \"O204200000-2\", \"new_address\": \"100 Pine Avenue\"}}"
+        },
+        {
+          "role": "user",
+          "content": "Tool observation: {\"order_id\": \"O204200000-2\", \"item\": \"headphones\", \"status\": \"pending\", \"address\": \"100 Pine Avenue\", \"refund_method\": \"\", \"return_eligible\": false}"
+        }
+      ],
+      "response": "{\"tool\":\"finish\",\"args\":{}}"
+    }
+  ]
+}

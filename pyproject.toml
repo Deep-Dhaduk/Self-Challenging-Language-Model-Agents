@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "self-challenging-agents-study"
+version = "0.1.0"
+description = "An educational implementation of self-challenging tool-use agents"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+llm = [
+    "torch>=2.6,<3",
+    "transformers==4.57.1",
+    "peft==0.17.1",
+    "accelerate==1.11.0",
+]
+
+[project.scripts]
+sca = "sca.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sca*"]

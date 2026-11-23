@@ -1,0 +1,41 @@
+[
+  {
+    "filter": "instruction_only",
+    "candidates": 48,
+    "accepted": 48,
+    "acceptance_rate": 1.0,
+    "probe_count": 288,
+    "true_positive": 60,
+    "true_negative": 156,
+    "false_positive": 48,
+    "false_negative": 24,
+    "probe_agreement": 0.75,
+    "source": "controlled fixture corruption; not an LLM ablation"
+  },
+  {
+    "filter": "solution",
+    "candidates": 48,
+    "accepted": 24,
+    "acceptance_rate": 0.5,
+    "probe_count": 144,
+    "true_positive": 48,
+    "true_negative": 48,
+    "false_positive": 48,
+    "false_negative": 0,
+    "probe_agreement": 0.6666666666666666,
+    "source": "controlled fixture corruption; not an LLM ablation"
+  },
+  {
+    "filter": "full",
+    "candidates": 48,
+    "accepted": 12,
+    "acceptance_rate": 0.25,
+    "probe_count": 72,
+    "true_positive": 24,
+    "true_negative": 48,
+    "false_positive": 0,
+    "false_negative": 0,
+    "probe_agreement": 1.0,
+    "source": "controlled fixture corruption; not an LLM ablation"
+  }
+]
