@@ -10,5 +10,6 @@
     "Original result ZIP",
     "Model weights"
   ],
-  "interpretation": "Native-template v3 has not been run. The v2 preflight failed 0/3, before training or held-out evaluation. Stored T4 dtype was bfloat16; this is a configuration finding, not a proven cause of model errors."
+  "interpretation": "Native-template v3 has not been run. The v2 preflight failed 0/3, before training or held-out evaluation. Stored T4 dtype was bfloat16; this is a configuration finding, not a proven cause of model errors.",
+  "trace_normalization": "Line endings and trailing spaces normalized; message content preserved."
 }
