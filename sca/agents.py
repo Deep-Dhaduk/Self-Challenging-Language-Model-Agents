@@ -8,27 +8,12 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Callable
 
-from .environment import RetailEnv, TOOL_HELP
+from .environment import RetailEnv
+from .protocol import EXECUTOR_PROTOCOL, EXECUTOR_SYSTEM
 from .schema import Action, Task
 from .tasks import verify
 
-EXECUTOR_PROTOCOL = "retail-json-v2"
-SYSTEM = """You are a tool-calling program in a simulated retail environment.
-Output ONLY ONE JSON tool call per turn, with keys "tool" and "args".
-Do not output explanations, plans, example calls, or imagined tool observations.
-There is no live user to answer questions; the user's request already supplies the email.
-
-Workflow:
-1. FIRST call lookup_customer, copying the exact email from the user's request.
-2. After observing customer_id, call list_orders with that returned customer_id.
-3. Match the requested item in the returned orders, then call get_order with its order_id.
-4. After reading that order, call the requested modification tool with the observed ID
-   and the exact refund method or shipping address requested. Address brackets are delimiters,
-   not part of the new address. Preserve all unrelated orders.
-5. After observing a successful modification, call finish with empty args.
-Wait for the real observation after EACH call. If a tool reports an error, correct the next
-call using the request and previous observations. Never guess IDs or use placeholders.
-""" + TOOL_HELP
+SYSTEM = EXECUTOR_SYSTEM
 STRATEGIES = ("stop_early", "skip_inspection", "wrong_target", "wrong_value", "complete")
 
 
@@ -53,12 +38,18 @@ def parse_action(text: str) -> tuple[Action, bool]:
             return Action.from_dict({"tool": value["name"], "args": value["arguments"]})
         raise ValueError("Missing tool name")
 
+    wrapped = re.fullmatch(r"\s*<tool_call>\s*(.*?)\s*</tool_call>\s*", text, re.DOTALL)
+    if wrapped:
+        try:
+            return convert(parse_json(wrapped.group(1))), False
+        except (ValueError, TypeError, KeyError):
+            pass
     try:
         value = parse_json(text)
     except (ValueError, json.JSONDecodeError):
         pass
     else:
-        return convert(value), "tool" not in value
+        return convert(value), False
     decoder = json.JSONDecoder()
     candidates = []
     cursor = 0

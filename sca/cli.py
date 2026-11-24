@@ -55,6 +55,8 @@ def parser() -> argparse.ArgumentParser:
             p.add_argument("--max-new-tokens", type=int, default=128)
             p.add_argument("--preflight-tasks", type=int, default=3,
                            help="Check up to three training task families before the long run; 0 disables")
+            p.add_argument("--preflight-only", action="store_true",
+                           help="Run the short training-task readiness check, save logs, and stop without training")
     return command
 
 
@@ -67,6 +69,8 @@ def run(args) -> int:
     if args.command == "llm":
         if not 0 <= args.preflight_tasks <= 3:
             raise ValueError("preflight_tasks must be between 0 and 3")
+        if args.preflight_only and not args.preflight_tasks:
+            raise ValueError("preflight_only requires at least one preflight task")
         if min(args.max_new_tokens, args.max_steps, args.train_steps, args.max_length) < 1:
             raise ValueError("Generation, tool, and training budgets must be positive")
         if args.temperature < 0:
@@ -116,8 +120,9 @@ def run(args) -> int:
         write_json(output / "preflight.json", readiness)
         write_jsonl(output / "preflight_rollouts.jsonl", [r.to_dict() for r in probes])
         print(f"Preflight: {readiness['successful_attempts']}/{readiness['tasks']} successful tasks", flush=True)
-        if readiness["status"] != "passed":
-            failure = {"status": "preflight_failed", "backend": "huggingface_lora", "model": args.model,
+        if readiness["status"] != "passed" or args.preflight_only:
+            failure = {"status": "preflight_passed" if readiness["status"] == "passed" else "preflight_failed",
+                       "backend": "huggingface_lora", "model": args.model,
                        "task_source": args.task_source, "executor_protocol": EXECUTOR_PROTOCOL,
                        "seed": args.seed, "python": platform.python_version(), "versions": versions,
                        "runtime": getattr(backend, "runtime_info", {}),
@@ -128,6 +133,9 @@ def run(args) -> int:
                        "elapsed_seconds": time.perf_counter() - start}
             write_json(output / "status.json", failure)
             write_json(output / "summary.json", failure)
+            if readiness["status"] == "passed":
+                print("Readiness check passed. No full evaluation or training was requested.", flush=True)
+                return 0
             print("Preflight failed; baseline evaluation and training were not started. "
                   "Inspect preflight_rollouts.jsonl before spending time on a longer run.", file=sys.stderr)
             return 2

@@ -10,7 +10,7 @@ This project demonstrates a task challenger, executable task verification, tool-
 
 **Presentation:** [PowerPoint](slides/self_challenging_agents.pptx) · [PDF](slides/self_challenging_agents.pdf) · [Speaker notes](slides/speaker_notes.txt) · [Slide overview](slides/slide_overview.png)
 
-The 18-slide presentation includes editable diagrams and charts, embedded speaker notes, and source links. Its rehearsal plan totals approximately 16 minutes 20 seconds; verify the actual recording duration. Paper findings, the measured CPU demonstration, the unsuccessful first LLM attempt, and the pending retry are explicitly distinguished. The PDF is a visual edition without speaker notes or clickable links. The files have not been published to SlideShare.
+The 18-slide presentation includes editable diagrams and charts, embedded speaker notes, and source links. Its rehearsal plan totals approximately 16 minutes 20 seconds; verify the actual recording duration. Paper findings, the measured CPU demonstration, two unsuccessful LLM attempts, and the pending native-protocol check are explicitly distinguished. The PDF is a visual edition without speaker notes or clickable links. The files have not been published to SlideShare.
 
 ## What is implemented
 
@@ -63,34 +63,46 @@ Output directories must be new or empty. Use another `--output` value to keep ea
 
 Open [the notebook](notebooks/self_challenging_agents.ipynb), or use the Colab badge after the notebook is pushed to GitHub. Run the initial CPU cells, select a CUDA GPU runtime for the LLM cells, and install the optional dependencies using the provided cell.
 
-The notebook starts with real LLM execution/training on template-authored tasks. Set `TASK_SOURCE = "llm"` to enable the interactive LLM challenger. This distinction is recorded in every run. A small model may produce invalid tasks or no successful trajectories; these outcomes are recorded, never replaced with artificial successes.
+The notebook now defaults to **a short readiness check only** (`RUN_FULL_EXPERIMENT = False`). It performs up to three training-task probes and saves their results without full evaluation or model training. Only after this succeeds, set `RUN_FULL_EXPERIMENT = True` and rerun that cell to request the full experiment. A passed readiness check has `training_completed: false`; that is expected. The final cell offers a ZIP download, and all three probe traces are printed into the notebook output for recovery.
+
+The notebook uses template-authored tasks for the initial check and optional full experiment. Set `TASK_SOURCE = "llm"` to enable the interactive LLM challenger. This distinction is recorded in every run. A small model may produce invalid tasks or no successful trajectories; these outcomes are recorded, never replaced with artificial successes.
 
 The same experiment can be run from a terminal:
 
 ```bash
 python -m pip install -e ".[llm]"
+python -m sca llm --device cuda --preflight-only --output outputs/native_check
+```
+
+After a successful readiness check, request full training explicitly:
+
+```bash
 python -m sca llm --device cuda --task-source template --output outputs/llm_template
 ```
 
-For LLM-authored tasks, a stronger model can be selected:
+To request LLM-authored tasks:
 
 ```bash
 python -m sca llm --device cuda --task-source llm --model Qwen/Qwen2.5-1.5B-Instruct --train-tasks 12 --test-tasks 6 --rollouts 6 --train-steps 30 --output outputs/llm_challenger
 ```
 
-The revised default is `Qwen/Qwen2.5-1.5B-Instruct`. Model downloads need internet access. No paid API service is used. CUDA loads use bfloat16 when supported, otherwise float16; CPU loads use float32. LoRA parameters remain float32, with gradient checkpointing during training. Sequences longer than `--max-length` are dropped from training, not silently cut through an answer. The revised pretrained-model configuration still needs a Colab run; selecting a stronger model does not establish an improvement.
+The model is `Qwen/Qwen2.5-1.5B-Instruct`. Model downloads need internet access. No paid API service is used. CUDA loads use bfloat16 only with native hardware support; the T4 uses float16. CPU loads use float32. LoRA parameters remain float32, with gradient checkpointing during training. Sequences longer than `--max-length` are dropped from training, not silently cut through an answer. The current native-protocol configuration still needs a pretrained-model check; code tests do not establish model success.
 
 The optional dependency versions are pinned to the locally checked Transformers/PEFT APIs. Training is a small PyTorch loop with AdamW, LoRA on query/value projections, and loss masked to assistant responses. No TRL server or external experiment-tracking account is needed. See the [model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct), [Transformers chat templates](https://huggingface.co/docs/transformers/chat_templating), and [PEFT quick tour](https://huggingface.co/docs/peft/quicktour).
 
-### First Colab attempt and the revised protocol
+### Recorded attempts and the current protocol
 
 The first uploaded run used Qwen2.5-0.5B-Instruct with template-authored tasks. It evaluated 12 held-out tasks and collected 96 training attempts, all unsuccessful. Fine-tuning was therefore skipped and the after-training score is absent. Its unmodified [summary](results/llm_first_attempt/summary.json), [configuration](results/llm_first_attempt/config.json), [diagnostics](results/llm_first_attempt/diagnostics.json), and [original ZIP](results/llm_first_attempt/original_run.zip) are preserved. The original archive SHA-256 is recorded in the diagnostics.
 
-The logs showed invented/placeholder IDs, skipped lookup steps, and explanations mixed with tool calls. Protocol `retail-json-v2` uses explicit step-by-step tool instructions and signatures without placeholder JSON arguments. The executor can normalize exactly one unambiguous tool-call object from surrounding prose or a native `name`/`arguments` envelope. It rejects multiple calls and never invents or repairs arguments. Original model responses are retained in `raw_responses`; execution/history and successful training targets use canonical action JSON. Malformed non-action responses are excluded from training targets, even if the trajectory later succeeds. `format_recoveries` reports normalizations separately from tool/action errors.
+The second attempt used 1.5B and protocol `retail-json-v2`. Its readiness check failed **0/3**, so neither training nor held-out evaluation started. The saved notebook preserved the [summary](results/llm_second_attempt/summary.json) and [first probe transcript](results/llm_second_attempt/first_preflight_trace.txt); [provenance](results/llm_second_attempt/provenance.json) identifies the source and missing artifacts. Order IDs were still invented and the order-listing step was skipped. Its recorded T4 precision was bfloat16; that is a configuration finding, not a proven cause of the model errors.
+
+Protocol **`retail-native-v3`** passes JSON function schemas through Qwen's native chat template, represents assistant calls as `tool_calls`, and represents actual results as `role: tool`. The same conversion is used during inference and response-only training. This replaces custom tool descriptions embedded in ordinary chat. It follows the [Qwen function-calling interface](https://qwen.readthedocs.io/en/v2.5/framework/function_call.html). All tools remain available; the code never chooses the next action, invents an argument, or supplies the current task's reference solution for the model.
+
+Exactly one tool call can be executed per turn. Ordinary native wrappers are parsed without counting them as error recovery; a single call embedded in extra prose is counted in `format_recoveries`. Multiple calls are rejected. Original model outputs remain in `raw_responses`; audit transcripts and valid training targets use canonical action JSON. Malformed non-action responses are excluded from training targets even when the trajectory later succeeds.
 
 Before the long experiment, up to three **training** tasks, covering available operation types, check whether the model can complete at least one request with both a positive reward and a correct goal outcome. A failed check stops before baseline evaluation and full rollout collection. Probe conversations are saved for diagnosis and excluded from training examples and held-out scores. `--preflight-tasks 0` explicitly disables this check. Passing it is a readiness signal, not a guarantee of sufficient training data or a measured improvement.
 
-The model, prompt, parser, precision, and protocol differ from the first attempt. Treat the retry as a new configuration; only its own matched before/after evaluation can support a training-effect claim.
+Model, prompt, parser, precision, and protocol changes define different configurations. Only a configuration's own matched before/after evaluation can support a training-effect claim. Offline checks verify role conversion, label masking, real tiny-model LoRA updates, and the T4 precision rule. They use an independent test template, not downloaded Qwen weights. Neither success on the pretrained model nor an LLM learning gain has been demonstrated for v3.
 
 ### When a run cannot train
 
@@ -128,7 +140,7 @@ Template test tasks use fresh customer/order identities and a different request 
 
 The ablation dataset deliberately contains equal groups of valid tasks, bad reference solutions, permissive checks, and overstrict checks. Filters compare: schema only; reference-solution checking; and reference plus no-op/failure-case checking. Audit rates apply to this constructed fixture set and finite probes only. They do not measure the paper's or a language model's task-generation quality.
 
-One small run cannot establish statistical significance. LLM training may improve, worsen, or leave scores unchanged. Repeat with several seeds and larger task sets before making performance claims. Included evidence comprises the completed CPU demonstration, tiny random-model training checks, and the unsuccessful first Colab attempt. The revised 1.5B pretrained-model experiment is pending.
+One small run cannot establish statistical significance. LLM training may improve, worsen, or leave scores unchanged. Repeat with several seeds and larger task sets before making performance claims. Included evidence comprises the completed CPU demonstration, tiny random-model training checks, the unsuccessful first Colab attempt, and the unsuccessful second readiness check. The native-v3 pretrained-model check is pending.
 
 ## Output files
 
@@ -138,6 +150,7 @@ One small run cannot establish statistical significance. LLM training may improv
 | `train_tasks.jsonl`, `test_tasks.jsonl` | Full task specifications with source and exploration trace. |
 | `challenger_train.jsonl`, `challenger_test.jsonl` | Accepted/rejected proposals and model conversations, for LLM task authoring. |
 | `preflight.json`, `preflight_rollouts.jsonl` | Training-only readiness check and original model responses; excluded from RFT examples and test scores. |
+| `console.log` | Colab subprocess output, also printed into the notebook for recovery after disconnection. |
 | `before_rollouts.jsonl`, `after_rollouts.jsonl` | Held-out attempts before and after the update. |
 | `training_rollouts.jsonl` | All sampled training attempts, including failures. |
 | `successful_actions.jsonl` | Assistant-response training examples from rewarded training rollouts. |
@@ -175,6 +188,7 @@ sca/
   challenger.py       # Interactive LLM task authoring
   agents.py           # CPU/LLM executors, trajectories, evaluation
   llm.py              # Hugging Face backend and response-only LoRA training
+  protocol.py         # Native function schemas and shared inference/training format
   cli.py              # Experiment orchestration and split checks
   report.py           # JSON, CSV, and SVG artifacts
 notebooks/
@@ -182,6 +196,7 @@ notebooks/
 slides/               # PowerPoint, PDF, speaker notes, and overview
 results/cpu_demo/      # Measured CPU example, clearly labeled
 results/llm_first_attempt/  # Original unsuccessful Colab run and diagnostics
+results/llm_second_attempt/ # Readiness failure recovered from the executed notebook
 tests/                # Core and optional tiny-model smoke tests
 scripts/
   build_notebook.py   # Rebuilds the unexecuted notebook

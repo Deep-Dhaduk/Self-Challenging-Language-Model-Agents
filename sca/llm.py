@@ -5,7 +5,16 @@ import json
 import random
 from pathlib import Path
 
+from .protocol import apply_chat_template
+
 DEFAULT_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+
+
+def cuda_dtype(torch_module):
+    """T4 (compute capability 7.5) needs fp16, even when bf16 emulation is reported."""
+    major, _ = torch_module.cuda.get_device_capability()
+    native_bf16 = major >= 8 and torch_module.cuda.is_bf16_supported(including_emulation=False)
+    return torch_module.bfloat16 if native_bf16 else torch_module.float16
 
 
 class HFBackend:
@@ -34,7 +43,7 @@ class HFBackend:
         if device == "cuda":
             if not torch.cuda.is_available():
                 raise ValueError("CUDA is unavailable. Select a GPU runtime before starting this run.")
-            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            dtype = cuda_dtype(torch)
         tokenizer = AutoTokenizer.from_pretrained(model_id)
         model = AutoModelForCausalLM.from_pretrained(
             model_id, torch_dtype=dtype, attn_implementation="sdpa",
@@ -47,8 +56,8 @@ class HFBackend:
         torch.manual_seed(seed)
         self.model.eval()
         device = next(self.model.parameters()).device
-        inputs = self.tokenizer.apply_chat_template(
-            messages, tokenize=True, add_generation_prompt=True, return_tensors="pt",
+        inputs = apply_chat_template(
+            self.tokenizer, messages, tokenize=True, add_generation_prompt=True, return_tensors="pt",
             return_dict=True,
         ).to(device)
         # Generic fast tokenizers can emit these, but Qwen's causal LM rejects them.
@@ -65,9 +74,9 @@ class HFBackend:
 
 def encode_example(tokenizer, example: dict, max_length: int) -> dict | None:
     """Mask prompts/observations. Drop long examples instead of truncating their answers."""
-    prefix = tokenizer.apply_chat_template(example["messages"], tokenize=True, add_generation_prompt=True)
-    full = tokenizer.apply_chat_template(
-        example["messages"] + [{"role": "assistant", "content": example["response"]}],
+    prefix = apply_chat_template(tokenizer, example["messages"], tokenize=True, add_generation_prompt=True)
+    full = apply_chat_template(
+        tokenizer, example["messages"] + [{"role": "assistant", "content": example["response"]}],
         tokenize=True, add_generation_prompt=False,
     )
     if full[:len(prefix)] != prefix:

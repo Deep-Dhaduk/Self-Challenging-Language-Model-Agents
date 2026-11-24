@@ -123,13 +123,13 @@ def add(title, section, seconds, notes, sources=(), dark=False):
 
 
 s = add("Can AI agents learn by creating their own challenges?", "Opening", 35, """
-This presentation examines how an agent can obtain useful practice experience and how we can tell whether that experience helped. The selected research case study is connected to a broader taxonomy, then to a small companion implementation. Keep published research, measured CPU results, and the unsuccessful first LLM attempt separate. The revised LLM experiment is pending. The goal is an engineering explanation with concrete examples. Follow the story from a customer request to task validation, policy updates, and separate evaluation. The planned timing is about sixteen minutes; rehearse it before recording because reading speed and pauses determine the actual duration.
+This presentation examines how an agent can obtain useful practice experience and how we can tell whether that experience helped. The selected research case study is connected to a broader taxonomy, then to a small companion implementation. Keep published research, measured CPU results, and two unsuccessful LLM attempts separate. Neither LLM attempt reached adapter training. A native-function-call configuration is prepared but has no pretrained-model results yet. Follow the story from a customer request to task validation, policy updates, and separate evaluation. The planned timing is about sixteen minutes; rehearse it before recording because reading speed and pauses determine the actual duration.
 """, (PAPER,), dark=True)
 s.text("RESEARCH CASE STUDY + EXECUTABLE COMPANION PROJECT", .7, .58, 12, .4, 12, "8DDAD5", True)
 s.text("Can AI agents learn by\ncreating their own challenges?", .7, 1.55, 12, 2.0, 42, WHITE, True)
 s.text("Self-Challenging Language Model Agents\nZhou et al. | arXiv:2506.01716 | June 2025", .75, 4.02, 11.7, .9, 23, "DCE8EF")
 s.text("Deep Dhaduk  |  Individual assignment", .75, 5.62, 10, .4, 18, WHITE)
-s.text("Paper findings • CPU results • First LLM attempt + planned retry", .75, 6.23, 11.8, .35, 14, "8DDAD5")
+s.text("Paper findings • CPU results • Two LLM attempts + next check", .75, 6.23, 11.8, .35, 14, "8DDAD5")
 
 s = add("A return request is a workflow", "01 / Motivation", 55, """
 Start with a familiar example. A customer wants to return headphones and receive the refund through the original payment method. The assistant has to identify the customer, find the intended order, inspect it, and apply the correct change. A fluent final sentence does not establish that these actions happened. The important evidence is the resulting state and the information returned by tools. Now think about preparing a training task for this workflow. We need a clear request, a feasible starting state, and a way to evaluate the outcome. If the supposed order does not exist, the agent cannot solve the task. If the checker ignores the refund method, the agent can receive misleading feedback. This motivates examining the entire practice pipeline, not just the final response.
@@ -220,7 +220,7 @@ steps = [("Task source", "Template / optional LLM"), ("Quality filter", "Referen
 for i, (label, body) in enumerate(steps):
     s.card(.65+4.2*i, 1.88, 3.95, 1.75, label, body, size=17)
 s.card(.7, 4.03, 5.8, 1.9, "CPU PATH — COMPLETED", "Strategy probabilities updated\nMeasured on separate synthetic tasks", size=19)
-s.card(6.75, 4.03, 5.85, 1.9, "LLM PATH — RETRY PENDING", "First run: 0/96 rewarded attempts\nNo adapter update; retry pending", accent="A36C15", size=19)
+s.card(6.75, 4.03, 5.85, 1.9, "LLM PATH — CHECK PENDING", "0/96 rollouts; then 0/3 probes\nNo adapter updates; native v3 pending", accent="A36C15", size=19)
 s.source("Companion source: sca/agents.py, sca/llm.py, sca/cli.py. These are educational adaptations.", REPO)
 
 s = add("Measure outcomes and keep evaluation separate", "10 / Metrics and protocol", 60, """
@@ -270,13 +270,13 @@ for i, (label, value) in enumerate(zip(("Schema only", "+ Reference check", "+ N
 s.text("12 valid + 12 bad solutions + 12 permissive + 12 overstrict", .8, 5.8, 11.8, .5, 21, MUTED)
 s.source("Companion controlled fixtures: results/cpu_demo/filter_ablation.json. Not an LLM generation-quality estimate.", SOURCE_URLS["cpu_results"])
 
-s = add("The first LLM run exposed a tool-use bottleneck", "13 / First run and retry", 55, """
-The first Colab run used Qwen2.5-0.5B-Instruct on template-authored tasks. It completed baseline evaluation and sampled ninety-six training attempts, but none earned a reward. The code correctly skipped adapter training. Logs showed invented order IDs, missed lookup steps, and explanations where a tool call was required. The original ZIP and summary are preserved. The revised configuration uses Qwen2.5-1.5B-Instruct, explicit workflow instructions, and a short training-only readiness check. A parser accepts one unambiguous action but does not repair its arguments; raw responses are retained. These changes define a new experimental configuration, not a demonstrated learning gain. Its own before-and-after evaluation is still pending. Any later improvement must be attributed carefully because model and protocol changes cannot be isolated from this single retry.
+s = add("Two LLM attempts stopped before training", "13 / Observed failures and next check", 55, """
+The first Colab run used Qwen2.5-0.5B-Instruct and generated ninety-six unsuccessful training attempts, so fine-tuning was skipped. The second used the 1.5B model and revised instructions, but none of its three readiness probes succeeded. That check stopped before full evaluation or training. The executed notebook preserved the summary and one probe transcript; it did not recover all three raw trajectories. The model still invented order IDs and skipped listing orders. The next configuration uses native function schemas, assistant tool-call messages, and tool-result roles. It also selects FP16 on the T4 instead of BF16 emulation. Neither change has a verified pretrained-model result yet. The next GPU attempt requests only a short readiness check. These are engineering changes, not evidence that model learning has improved performance.
 """)
-s.card(.7, 1.92, 5.8, 3.55, "FIRST ATTEMPT", "Qwen2.5-0.5B-Instruct\n96 training attempts\n0 rewarded attempts\nFine-tuning skipped", size=22)
-s.card(6.75, 1.92, 5.85, 3.55, "REVISED RETRY", "Qwen2.5-1.5B-Instruct\nExplicit tool workflow\nSingle-call normalization\nTraining-only readiness check", size=22)
-s.text("STATUS: revised run pending. No LLM training-improvement claim yet.", .78, 5.98, 11.9, .42, 20, "A36C15", True)
-s.source("First-run evidence: results/llm_first_attempt. Revised configuration: notebooks/self_challenging_agents.ipynb", REPO + "/tree/main/results/llm_first_attempt")
+s.card(.7, 1.92, 5.8, 3.55, "OBSERVED ATTEMPTS", "First: 0.5B model\n0/96 rewarded rollouts\nSecond: 1.5B model\n0/3 readiness probes", size=22)
+s.card(6.75, 1.92, 5.85, 3.55, "NEXT: NATIVE PROTOCOL", "Structured function schemas\nAssistant + tool-result roles\nT4 precision: FP16\nShort check only; no training", size=22)
+s.text("STATUS: native-v3 model check pending. No LLM learning gain demonstrated.", .78, 5.98, 11.9, .42, 20, "A36C15", True)
+s.source("Evidence: results/llm_first_attempt and results/llm_second_attempt. Notebook saves short-check traces inline.", REPO + "/tree/main/results/llm_second_attempt")
 
 s = add("What the evidence can—and cannot—support", "14 / Limitations", 60, """
 There are three boundaries I would keep visible when presenting the project. First, task tests cover examples, not every possible interpretation of an instruction. A reward can therefore be wrong even when the checker executes without error. Second, the companion CPU task family is intentionally narrow, and a single seed provides limited evidence. The useful next step is a larger independent test set and additional seeds, rather than a stronger claim about the same small run. Third, improvement must be assessed alongside resources. Rejecting many proposals, sampling more attempts, and making longer tool conversations can increase cost. My engineering interpretation is that the evaluator itself needs an audit. Record reward disagreements and inspect complete trajectories so that a score increase can be connected to intended behavior.
@@ -392,7 +392,7 @@ prs.core_properties.title = "Can AI Agents Learn by Creating Their Own Challenge
 prs.core_properties.subject = "Self-Challenging Language Model Agents: research case study and companion implementation"
 prs.core_properties.author = "Deep Dhaduk"
 prs.core_properties.keywords = "LLM agents, self-improvement, Code-as-Task, evaluation, individual assignment"
-prs.core_properties.comments = "Paper findings, CPU results, and the unsuccessful first LLM attempt are distinguished. Revised pretrained-model experiment pending."
+prs.core_properties.comments = "Paper findings, CPU results, and two unsuccessful LLM attempts are distinguished. Native-protocol pretrained-model check pending."
 images = []
 manifest = []
 elapsed = 0

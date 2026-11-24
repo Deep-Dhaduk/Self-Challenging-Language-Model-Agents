@@ -8,7 +8,7 @@ Timing is a rehearsal guide, not a guarantee of recorded duration.
 SLIDE 01: Can AI agents learn by creating their own challenges?
 Target 00:00–00:35
 
-This presentation examines how an agent can obtain useful practice experience and how we can tell whether that experience helped. The selected research case study is connected to a broader taxonomy, then to a small companion implementation. Keep published research, measured CPU results, and the unsuccessful first LLM attempt separate. The revised LLM experiment is pending. The goal is an engineering explanation with concrete examples. Follow the story from a customer request to task validation, policy updates, and separate evaluation. The planned timing is about sixteen minutes; rehearse it before recording because reading speed and pauses determine the actual duration.
+This presentation examines how an agent can obtain useful practice experience and how we can tell whether that experience helped. The selected research case study is connected to a broader taxonomy, then to a small companion implementation. Keep published research, measured CPU results, and two unsuccessful LLM attempts separate. Neither LLM attempt reached adapter training. A native-function-call configuration is prepared but has no pretrained-model results yet. Follow the story from a customer request to task validation, policy updates, and separate evaluation. The planned timing is about sixteen minutes; rehearse it before recording because reading speed and pauses determine the actual duration.
 
 Sources:
 https://arxiv.org/abs/2506.01716
@@ -139,10 +139,10 @@ https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/main/
 
 
 ========================================================================
-SLIDE 14: The first LLM run exposed a tool-use bottleneck
+SLIDE 14: Two LLM attempts stopped before training
 Target 12:30–13:25
 
-The first Colab run used Qwen2.5-0.5B-Instruct on template-authored tasks. It completed baseline evaluation and sampled ninety-six training attempts, but none earned a reward. The code correctly skipped adapter training. Logs showed invented order IDs, missed lookup steps, and explanations where a tool call was required. The original ZIP and summary are preserved. The revised configuration uses Qwen2.5-1.5B-Instruct, explicit workflow instructions, and a short training-only readiness check. A parser accepts one unambiguous action but does not repair its arguments; raw responses are retained. These changes define a new experimental configuration, not a demonstrated learning gain. Its own before-and-after evaluation is still pending. Any later improvement must be attributed carefully because model and protocol changes cannot be isolated from this single retry.
+The first Colab run used Qwen2.5-0.5B-Instruct and generated ninety-six unsuccessful training attempts, so fine-tuning was skipped. The second used the 1.5B model and revised instructions, but none of its three readiness probes succeeded. That check stopped before full evaluation or training. The executed notebook preserved the summary and one probe transcript; it did not recover all three raw trajectories. The model still invented order IDs and skipped listing orders. The next configuration uses native function schemas, assistant tool-call messages, and tool-result roles. It also selects FP16 on the T4 instead of BF16 emulation. Neither change has a verified pretrained-model result yet. The next GPU attempt requests only a short readiness check. These are engineering changes, not evidence that model learning has improved performance.
 
 Sources:
 

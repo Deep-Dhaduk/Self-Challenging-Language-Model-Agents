@@ -198,6 +198,23 @@ class AgentTests(unittest.TestCase):
 
 
 class CLITests(unittest.TestCase):
+    def test_preflight_only_never_runs_training_or_test_evaluation(self):
+        readiness = {"status": "passed", "successful_attempts": 3, "tasks": 3}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "probe"
+            args = parser().parse_args(["llm", "--output", str(path), "--preflight-only"])
+            with patch("sca.llm.HFBackend.load", return_value=object()), \
+                 patch("sca.cli.preflight", return_value=(readiness, [])), \
+                 patch("sca.cli.collect", side_effect=AssertionError("Full evaluation must not run")), \
+                 patch("sca.llm.train_adapter") as training:
+                self.assertEqual(run(args), 0)
+                training.assert_not_called()
+            summary = json.loads((path / "summary.json").read_text())
+            self.assertEqual(summary["status"], "preflight_passed")
+            self.assertFalse(summary["training_completed"])
+            self.assertIsNone(summary["before"])
+            self.assertIsNone(summary["after"])
+
     def test_llm_preflight_failure_stops_before_full_collection(self):
         class FinishBackend:
             def generate(self, messages, seed, temperature):

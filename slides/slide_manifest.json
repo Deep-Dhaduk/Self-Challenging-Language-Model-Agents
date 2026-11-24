@@ -7,7 +7,7 @@
       "target_seconds": 35,
       "start_seconds": 0,
       "end_seconds": 35,
-      "speaker_note_words": 100,
+      "speaker_note_words": 101,
       "sources": [
         "https://arxiv.org/abs/2506.01716"
       ]
@@ -156,12 +156,12 @@
     },
     {
       "slide": 14,
-      "title": "The first LLM run exposed a tool-use bottleneck",
-      "section": "13 / First run and retry",
+      "title": "Two LLM attempts stopped before training",
+      "section": "13 / Observed failures and next check",
       "target_seconds": 55,
       "start_seconds": 750,
       "end_seconds": 805,
-      "speaker_note_words": 120,
+      "speaker_note_words": 123,
       "sources": []
     },
     {
@@ -219,7 +219,7 @@
     }
   ],
   "total_target_seconds": 980,
-  "speaker_note_words": 2096,
+  "speaker_note_words": 2100,
   "sources": {
     "paper": "https://arxiv.org/abs/2506.01716",
     "survey": "https://arxiv.org/abs/2607.13104",

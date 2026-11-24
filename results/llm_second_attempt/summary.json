@@ -1,0 +1,43 @@
+{
+  "status": "preflight_failed",
+  "backend": "huggingface_lora",
+  "model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "task_source": "template",
+  "executor_protocol": "retail-json-v2",
+  "seed": 42,
+  "python": "3.13.16",
+  "versions": {
+    "torch": "2.14.1+cu130",
+    "transformers": "4.57.1",
+    "peft": "0.17.1",
+    "accelerate": "1.11.0"
+  },
+  "runtime": {
+    "device": "cuda:0",
+    "parameter_dtype": "torch.bfloat16",
+    "max_new_tokens": 128
+  },
+  "training_completed": false,
+  "training_rollouts": 0,
+  "requested_train_tasks": 24,
+  "requested_test_tasks": 12,
+  "valid_train_tasks": 24,
+  "valid_test_tasks": 12,
+  "before": null,
+  "after": null,
+  "preflight": {
+    "status": "failed",
+    "tasks": 3,
+    "task_ids": [
+      "train-4210000",
+      "train-4210001",
+      "train-4210002"
+    ],
+    "successful_attempts": 0,
+    "tool_errors": 12,
+    "format_recoveries": 0,
+    "used_for_training": false,
+    "meaning": "Readiness check on training tasks, not an evaluation score or an improvement claim."
+  },
+  "elapsed_seconds": 103.78915245600001
+}

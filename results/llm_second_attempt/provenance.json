@@ -1,0 +1,14 @@
+{
+  "source": "self_challenging_agents (1).ipynb",
+  "source_sha256": "347c5fd266c4d4010e080f0384d914f6516873d76cf1d8c00be71c68d2e2c09f",
+  "evidence": "Recovered from saved notebook stream outputs; no result ZIP was available.",
+  "summary_cell_execution_count": 8,
+  "recovered_summary_is_reported_output": true,
+  "available_traces": 1,
+  "missing": [
+    "All three raw preflight JSONL trajectories",
+    "Original result ZIP",
+    "Model weights"
+  ],
+  "interpretation": "Native-template v3 has not been run. The v2 preflight failed 0/3, before training or held-out evaluation. Stored T4 dtype was bfloat16; this is a configuration finding, not a proven cause of model errors."
+}

@@ -56,12 +56,12 @@ if not (Path.cwd() / "sca").is_dir():
             subprocess.run(["git", "clone", REPOSITORY, str(checkout)], check=True)
         os.chdir(checkout)
 ROOT = Path.cwd()
-if "retail-json-v2" not in (ROOT / "sca" / "agents.py").read_text():
+if not (ROOT / "sca" / "protocol.py").exists() or "retail-native-v3" not in (ROOT / "sca" / "protocol.py").read_text():
     raise RuntimeError("This checkout is an older version. Start a fresh Colab runtime and reopen the updated notebook.")
 RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
 print("Repository:", ROOT)
 print("Python:", sys.version)
-print("Executor protocol: retail-json-v2")
+print("Executor protocol: retail-native-v3")
 """)
 cell("markdown", """
 ## 2. Inspect a Code-as-Task example
@@ -113,7 +113,9 @@ For the remaining sections select **Runtime → Change runtime type → T4 GPU**
 CUDA GPU). This downloads dependencies and model weights. It needs internet access, but no
 paid API key. The default is now Qwen2.5-1.5B-Instruct. The earlier 0.5B run collected
 zero successful training attempts, so its fine-tuning was skipped. That result is preserved.
-CUDA loads use bfloat16 when supported, otherwise float16; CPU loads use float32.
+CUDA loads use native bfloat16 only on supported hardware; the T4 uses float16.
+CPU loads use float32. The model's native function-call template supplies tool schemas,
+assistant function calls, and tool-result messages during both inference and training.
 The pinned package versions match the repository's tested library API.
 """)
 cell("code", """
@@ -130,7 +132,12 @@ if not torch.cuda.is_available():
 print("GPU:", torch.cuda.get_device_name(0))
 """)
 cell("markdown", """
-## 5. Configure and run real LLM rejection fine-tuning
+## 5. Run a short readiness check first
+
+By default, `RUN_FULL_EXPERIMENT = False`: this runs only up to three training-task probes.
+It does not run held-out evaluation or fine-tuning. A passed readiness check is not a
+training result. Only after it passes should you set `RUN_FULL_EXPERIMENT = True`
+and rerun this cell to request the full experiment in a new output directory.
 
 `TASK_SOURCE = "template"` is the initial smoke configuration: real LLM execution and
 training, with tasks authored by the deterministic fixture generator.
@@ -142,7 +149,7 @@ Invalid proposals are rejected and saved in logs. There is no fallback to refere
 A readiness check first runs up to three **training** tasks with the same model and settings.
 If none succeeds, the experiment stops before full baseline evaluation and rollout collection.
 Those probes are saved for diagnosis and never added to the training dataset or test scores.
-The stronger model and revised protocol are configuration changes, not evidence of learning.
+The model and native protocol are configuration changes, not evidence of learning.
 
 The same base LLM authors tasks and executes them. Training uses only its own rewarded
 training trajectories, with loss only on assistant responses. This is one offline RFT
@@ -158,6 +165,7 @@ ROLLOUTS_PER_TRAIN_TASK = 4
 EVAL_K = 2
 TRAIN_STEPS = 40
 PREFLIGHT_TASKS = 3
+RUN_FULL_EXPERIMENT = False  # Keep False until the short readiness check succeeds.
 # Each rerun gets its own directory, so earlier results are preserved.
 LLM_RUN = ROOT / "outputs" / f"llm_{TASK_SOURCE}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')}"
 
@@ -169,10 +177,27 @@ command = [
     "--train-steps", str(TRAIN_STEPS), "--seed", "42",
     "--preflight-tasks", str(PREFLIGHT_TASKS), "--max-new-tokens", "128",
 ]
-completed = subprocess.run(command, check=False)
-print("Experiment exit code:", completed.returncode)
-if completed.returncode:
+if not RUN_FULL_EXPERIMENT:
+    command.append("--preflight-only")
+# Capture the actual subprocess log into the notebook outputs as it runs.
+# Keep the log outside LLM_RUN until the CLI has created its new output directory.
+console_path = ROOT / "outputs" / f"{LLM_RUN.name}_console.log"
+with console_path.open("w") as log:
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                               text=True, bufsize=1)
+    for line in process.stdout:
+        print(line, end="", flush=True)
+        log.write(line)
+        log.flush()
+    exit_code = process.wait()
+if LLM_RUN.exists():
+    import shutil
+    shutil.copy2(console_path, LLM_RUN / "console.log")
+print("Experiment exit code:", exit_code)
+if exit_code:
     print("STOPPED: training may not have run. Read the status below, then download the ZIP for diagnosis.")
+elif not RUN_FULL_EXPERIMENT:
+    print("Readiness check passed. Training has NOT run; inspect the three trajectories before requesting a full experiment.")
 """)
 cell("markdown", """
 ## 6. Inspect measured results and individual trajectories
@@ -190,6 +215,8 @@ if summary_path.exists():
     llm_summary = json.loads(summary_path.read_text())
     print("RUN STATUS:", llm_summary["status"])
     print("TRAINING COMPLETED:", llm_summary.get("training_completed", False))
+    if llm_summary["status"] == "preflight_passed":
+        print("READY: the short check passed. Training was not requested. Set RUN_FULL_EXPERIMENT = True only when ready for the full run.")
     if llm_summary.get("preflight"):
         print("PREFLIGHT:", llm_summary["preflight"]["status"])
     print(json.dumps(llm_summary, indent=2))
@@ -203,9 +230,16 @@ rollout_path = LLM_RUN / "before_rollouts.jsonl"
 if not rollout_path.exists():
     rollout_path = LLM_RUN / "preflight_rollouts.jsonl"
 if rollout_path.exists():
-    first_rollout = json.loads(rollout_path.read_text().splitlines()[0])
-    for message in first_rollout["messages"]:
-        print(message["role"].upper() + ":", message["content"], "\\n")
+    saved_rollouts = [json.loads(line) for line in rollout_path.read_text().splitlines()]
+    # Preserve the short probe traces in the notebook itself if the runtime
+    # disconnects before its ZIP can be downloaded.
+    selected = saved_rollouts if rollout_path.name == "preflight_rollouts.jsonl" else saved_rollouts[:1]
+    for rollout in selected:
+        print("TASK:", rollout["task_id"], "SUCCESS:", rollout["success"], "ERRORS:", rollout["tool_errors"])
+        for message in rollout["messages"][1:]:
+            print(message["role"].upper() + ":", message["content"], "\\n")
+        if rollout.get("raw_responses"):
+            print("RAW MODEL RESPONSES:", json.dumps(rollout["raw_responses"], indent=2))
 """)
 cell("markdown", """
 ## 7. Save artifacts and your executed notebook

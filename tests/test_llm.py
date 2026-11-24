@@ -1,6 +1,7 @@
 """Optional real-model smoke tests: tiny random Qwen, local tokenizer, no downloads."""
 
 import importlib.util
+import copy
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,7 +22,7 @@ class LLMTests(unittest.TestCase):
         torch.set_num_threads(2)
         words = ["[UNK]", "[PAD]", "[EOS]", "<|system|>", "<|user|>", "<|assistant|>",
                  "You", "are", "helpful", "Cancel", "my", "order", "tool", "args", "finish",
-                 "{", "}", ":", ",", '"']
+                 "{", "}", ":", ",", '"', "<tool_call>", "</tool_call>", "<tool_response>", "</tool_response>"]
         tokenizer = Tokenizer(WordLevel({word: i for i, word in enumerate(words)}, unk_token="[UNK]"))
         tokenizer.pre_tokenizer = Whitespace()
         cls.tokenizer = PreTrainedTokenizerFast(tokenizer_object=tokenizer,
@@ -34,7 +35,7 @@ class LLMTests(unittest.TestCase):
         cls.config = Qwen2Config(vocab_size=len(cls.tokenizer), hidden_size=32,
                                  intermediate_size=64, num_hidden_layers=1,
                                  num_attention_heads=2, num_key_value_heads=1,
-                                 max_position_embeddings=512,
+                                 max_position_embeddings=4096,
                                  eos_token_id=cls.tokenizer.eos_token_id,
                                  pad_token_id=cls.tokenizer.pad_token_id)
         cls.model_class = Qwen2ForCausalLM
@@ -87,6 +88,37 @@ class LLMTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(ValueError):
                 train_adapter(self.backend(), [{"split": "test"}], Path(tmp), max_steps=1)
+
+    def test_native_tool_format_uses_the_same_masking_for_real_lora_updates(self):
+        from sca.agents import Episode
+        from sca.llm import encode_example, train_adapter
+        from sca.protocol import apply_chat_template
+        from sca.tasks import template_task
+
+        backend = self.backend()
+        backend.tokenizer = copy.deepcopy(backend.tokenizer)
+        # Independent minimal test fixture, not the downloaded Qwen template.
+        backend.tokenizer.chat_template = (
+            "{% if tools %}{{ tools | tojson }}{% endif %}"
+            "{% for message in messages %}"
+            "{% if message.get('tool_calls') %}{{ '<|assistant|>\\n' }}"
+            "{% for call in message['tool_calls'] %}{{ '<tool_call>' + (call['function'] | tojson) + '</tool_call>' }}{% endfor %}{{ eos_token }}"
+            "{% elif message['role'] == 'tool' %}{{ '<tool_response>' + message['content'] + '</tool_response>' + eos_token }}"
+            "{% else %}{{ '<|' + message['role'] + '|>\\n' + message['content'] + eos_token }}{% endif %}{% endfor %}"
+            "{% if add_generation_prompt %}{{ '<|assistant|>\\n' }}{% endif %}"
+        )
+        episode = Episode(template_task(123))
+        episode.action("lookup_customer", email="customer123@example.com")
+        example = {"split": "train", **episode.examples[0]}
+        encoded = encode_example(backend.tokenizer, example, 4096)
+        prefix = apply_chat_template(backend.tokenizer, example["messages"], tokenize=True, add_generation_prompt=True)
+        self.assertEqual(encoded["labels"][:len(prefix)], [-100] * len(prefix))
+        self.assertGreater(sum(x != -100 for x in encoded["labels"]), 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            result = train_adapter(backend, [example], Path(tmp), max_steps=1,
+                                   accumulation=1, max_length=4096, rank=2)
+            self.assertEqual(result["used_examples"], 1)
+            self.assertIsInstance(backend.generate(example["messages"], 42, temperature=0), str)
 
     def test_half_precision_base_keeps_trainable_adapter_stable(self):
         import torch
