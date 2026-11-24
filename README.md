@@ -1,51 +1,77 @@
 # Self-Challenging Language Model Agents
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/blob/main/notebooks/self_challenging_agents.ipynb)
+An individual short story assignment exploring **[Self-Challenging Language Model Agents](https://arxiv.org/abs/2506.01716)** by Yifei Zhou, Sergey Levine, Jason Weston, Xian Li, and Sainbayar Sukhbaatar (2025).
 
-An individual coursework implementation inspired by **[Self-Challenging Language Model Agents](https://arxiv.org/abs/2506.01716)**, Yifei Zhou, Sergey Levine, Jason Weston, Xian Li, and Sainbayar Sukhbaatar (2025).
+The project combines an original research article, a PowerPoint presentation, an executed Google Colab notebook, and an educational implementation of tool-using agents and task verification.
 
-This project demonstrates a task challenger, executable task verification, tool-using executors, and learning from successful attempts. Code lives in this repository; the notebook runs that same code on Google Colab. The video presentation will be prepared separately.
+## Project links
 
-**Published Medium article:** [Can AI Agents Learn by Creating Their Own Challenges?](https://medium.com/@deepbharatbhai.dhaduk/can-ai-agents-learn-by-creating-their-own-challenges-dd7cdbf376e7)
-
-**Presentation:** [PowerPoint](slides/self_challenging_agents.pptx) · [PDF](slides/self_challenging_agents.pdf) · [Speaker notes](slides/speaker_notes.txt) · [Slide overview](slides/slide_overview.png)
-
-The 18-slide presentation includes editable diagrams and charts, embedded speaker notes, and source links. Its rehearsal plan totals approximately 16 minutes 20 seconds; verify the actual recording duration. Paper findings, the measured CPU demonstration, two unsuccessful LLM attempts, and the pending native-protocol check are explicitly distinguished. The PDF is a visual edition without speaker notes or clickable links. The files have not been published to SlideShare.
-
-## What is implemented
-
-| Component | Implementation here |
+| Material | Link |
 | --- | --- |
-| Tool environment | A resettable simulated shop with customer lookup, order lookup, cancellations, returns, and address changes. |
-| Task specification | Instruction, verification checks, reference tool calls, and three failure cases. |
-| Template challenger | Uses tool observations to construct known-valid fixtures. This is deterministic code, not an LLM. |
-| LLM challenger | An optional language model explores the tools and authors all task components as JSON. Invalid proposals are rejected and logged. |
-| Quality filtering | Check the reference solution succeeds, a no-op fails, and all three failure cases fail. |
-| CPU executor | A categorical policy selects among five scripted strategies. Successful attempts update its probabilities. |
-| LLM executor | A Hugging Face causal language model selects tool calls from observations, without seeing solutions or checks. |
-| LLM learning | One iteration of response-only LoRA rejection fine-tuning (RFT) on rewarded self-generated training rollouts. |
-| Evaluation | Before/after Pass@1, sampled Pass@k, per-operation success, tool errors, and verifier/oracle disagreements on separate test tasks. |
-| Ablation | A controlled fixture experiment comparing three levels of task filtering. |
-| Artifacts | Task JSONL, complete conversations, training examples, config, metrics, SVG charts, and an adapter when LLM training succeeds. |
+| Research paper | [Self-Challenging Language Model Agents](https://arxiv.org/abs/2506.01716) |
+| Published Medium article | [Can AI Agents Learn by Creating Their Own Challenges?](https://medium.com/@deepbharatbhai.dhaduk/can-ai-agents-learn-by-creating-their-own-challenges-dd7cdbf376e7) |
+| Final executed notebook | [View notebook with saved outputs](notebooks/self_challenging_agents.ipynb) |
+| Google Colab | [Open the final notebook in Colab](https://colab.research.google.com/github/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/blob/main/notebooks/self_challenging_agents.ipynb) |
+| Presentation | [Download PowerPoint](slides/self_challenging_agents.pptx) |
+| Repository | [GitHub project](https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents) |
 
-The paper's Code-as-Task formulation motivates the task structure. Our verifier uses a constrained JSON specification interpreted by Python instead of executing arbitrary model-generated Python. The small shop, models, training procedure, and datasets are educational adaptations. **This is not a reproduction of the paper's M3ToolEval/TauBench benchmark results.** The paper's main method and experiments are described in [Sections 4–5](https://arxiv.org/html/2506.01716v1).
+The presentation contains 18 slides, editable diagrams and charts, embedded speaker notes, and source links.
 
-```mermaid
-flowchart LR
-    A[Challenger explores tools] --> B[Task: instruction, checks, solution, failures]
-    B --> C[Quality filter]
-    C --> D[Training tasks]
-    D --> E[Executor samples tool-use attempts]
-    E --> F[Verifier rewards]
-    F --> G[Keep rewarded training attempts]
-    G --> H[Update policy / train LoRA adapter]
-    I[Separate test tasks] --> J[Evaluate before and after]
-    H --> J
-```
+## Research focus
 
-## Quick start: CPU demo
+The selected paper investigates agents that create practice tasks and learn from execution feedback. The companion implementation explores:
 
-Python 3.10+ is required. The CPU demo uses only the standard library: no installation, model download, GPU, or API key is needed.
+- A challenger that explores a simulated tool environment.
+- Tasks containing an instruction, verifier checks, a reference solution, and failure cases.
+- Filtering that checks reference solutions and rejects known failure cases.
+- Executors that interact with tools using observations from earlier actions.
+- Evaluation of task outcomes, action errors, and verifier reliability.
+
+Our simulated retail environment supports customer lookup, order inspection, cancellation, returns, and address changes. Verifier specifications are interpreted by trusted Python code. The implementation is an educational adaptation; its results are separate from the paper's M3ToolEval and TauBench results.
+
+## Final Colab notebook
+
+[self_challenging_agents.ipynb](notebooks/self_challenging_agents.ipynb) is the original executed notebook, preserved with its code, cell outputs, charts, and experiment summary. It is the only file in `notebooks/`.
+
+The notebook records the CPU demonstration and a Qwen2.5-0.5B-Instruct tool-use experiment with template-generated tasks. The saved Colab run used [source revision 9d56c24](https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents/tree/9d56c245600660979e69c014acc5c1e9d07ba376). Its saved outputs document that run; the source package in the repository also contains later interface refinements.
+
+## Recorded results
+
+### CPU demonstration
+
+The CPU experiment updates a categorical policy over five hand-written tool-use strategies. It uses 120 training tasks, four attempts per training task, and 60 held-out test tasks with four attempts each, using seed 42.
+
+| Metric | Before update | After update |
+| --- | ---: | ---: |
+| Pass@1 | 23.3% | 86.7% |
+| Pass@4 | 73.3% | 100.0% |
+| Tool/action errors across 240 evaluation attempts | 75 | 7 |
+
+Of 480 training attempts, 104 received a reward. These results measure selection among existing scripted strategies; they are not LLM fine-tuning results. See the [configuration, metrics, and example traces](results/cpu_demo/README.md).
+
+### LLM execution
+
+The final notebook's 0.5B experiment evaluated 12 held-out tasks and collected 96 training attempts. None received a reward, so rejection fine-tuning was skipped and there is no after-training score. The logged failures include invalid tool calls, invented order IDs, and missed lookup steps.
+
+The [original results ZIP](results/llm_first_attempt/original_run.zip), [run summary](results/llm_first_attempt/summary.json), [configuration](results/llm_first_attempt/config.json), and [diagnostics](results/llm_first_attempt/diagnostics.json) preserve the evidence.
+
+An additional 1.5B diagnostic recorded 0 successful tasks out of three readiness probes, before training or held-out evaluation. Its [summary](results/llm_second_attempt/summary.json), [recovered trace](results/llm_second_attempt/first_preflight_trace.txt), and [provenance](results/llm_second_attempt/provenance.json) are retained as supporting experiment records. This diagnostic is distinct from the final notebook's original 0.5B run.
+
+### Task-filter ablation
+
+A controlled dataset contains 48 fixtures: 12 valid tasks and 12 each with bad reference solutions, permissive verifiers, or overstrict verifiers.
+
+| Filtering level | Fixtures accepted |
+| --- | ---: |
+| Schema only | 48/48 |
+| Reference-solution check | 24/48 |
+| Reference, no-op, and failure-case checks | 12/48 |
+
+These are deliberately injected defects. The [ablation results](results/cpu_demo/filter_ablation.json) measure filter behavior on this fixture set, rather than an LLM's task-generation error rate.
+
+## Run the CPU demonstration
+
+Python 3.10+ is required. This path uses only the standard library, with no model download, GPU, or API key.
 
 ```bash
 git clone https://github.com/Deep-Dhaduk/Self-Challenging-Language-Model-Agents.git
@@ -53,114 +79,20 @@ cd Self-Challenging-Language-Model-Agents
 python -m sca demo --output outputs/demo
 ```
 
-The default run creates 120 training tasks, samples four attempts per training task, updates the strategy policy, and evaluates on 60 held-out tasks with four attempts each. Open `outputs/demo/evaluation.svg` for the result and `outputs/demo/summary.json` for the full metrics.
+The command saves task specifications, conversations, metrics, policy weights, and charts under `outputs/demo/`. Use a new output directory for each run. Generated runs, caches, and model weights are excluded from Git.
 
-The CPU policy learns which of five **hand-written strategies** receives a reward. It does not train a language model or discover new algorithms. Its results illustrate the learning loop only. The repository includes a measured [CPU example run](results/cpu_demo/README.md); scores there are ours, not the paper's.
+The package also includes Hugging Face inference, native function-call formatting, an optional LLM challenger, and response-only LoRA training utilities. Their dependencies are defined in the `llm` optional dependency group in [pyproject.toml](pyproject.toml). The recorded results above identify what the submitted experiments measured.
 
-Output directories must be new or empty. Use another `--output` value to keep earlier results intact.
-
-## Google Colab: real LLM experiment
-
-Open [the notebook](notebooks/self_challenging_agents.ipynb), or use the Colab badge after the notebook is pushed to GitHub. Run the initial CPU cells, select a CUDA GPU runtime for the LLM cells, and install the optional dependencies using the provided cell.
-
-The notebook now defaults to **a short readiness check only** (`RUN_FULL_EXPERIMENT = False`). It performs up to three training-task probes and saves their results without full evaluation or model training. Only after this succeeds, set `RUN_FULL_EXPERIMENT = True` and rerun that cell to request the full experiment. A passed readiness check has `training_completed: false`; that is expected. The final cell offers a ZIP download, and all three probe traces are printed into the notebook output for recovery.
-
-The notebook uses template-authored tasks for the initial check and optional full experiment. Set `TASK_SOURCE = "llm"` to enable the interactive LLM challenger. This distinction is recorded in every run. A small model may produce invalid tasks or no successful trajectories; these outcomes are recorded, never replaced with artificial successes.
-
-The same experiment can be run from a terminal:
-
-```bash
-python -m pip install -e ".[llm]"
-python -m sca llm --device cuda --preflight-only --output outputs/native_check
-```
-
-After a successful readiness check, request full training explicitly:
-
-```bash
-python -m sca llm --device cuda --task-source template --output outputs/llm_template
-```
-
-To request LLM-authored tasks:
-
-```bash
-python -m sca llm --device cuda --task-source llm --model Qwen/Qwen2.5-1.5B-Instruct --train-tasks 12 --test-tasks 6 --rollouts 6 --train-steps 30 --output outputs/llm_challenger
-```
-
-The model is `Qwen/Qwen2.5-1.5B-Instruct`. Model downloads need internet access. No paid API service is used. CUDA loads use bfloat16 only with native hardware support; the T4 uses float16. CPU loads use float32. LoRA parameters remain float32, with gradient checkpointing during training. Sequences longer than `--max-length` are dropped from training, not silently cut through an answer. The current native-protocol configuration still needs a pretrained-model check; code tests do not establish model success.
-
-The optional dependency versions are pinned to the locally checked Transformers/PEFT APIs. Training is a small PyTorch loop with AdamW, LoRA on query/value projections, and loss masked to assistant responses. No TRL server or external experiment-tracking account is needed. See the [model card](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct), [Transformers chat templates](https://huggingface.co/docs/transformers/chat_templating), and [PEFT quick tour](https://huggingface.co/docs/peft/quicktour).
-
-### Recorded attempts and the current protocol
-
-The first uploaded run used Qwen2.5-0.5B-Instruct with template-authored tasks. It evaluated 12 held-out tasks and collected 96 training attempts, all unsuccessful. Fine-tuning was therefore skipped and the after-training score is absent. Its unmodified [summary](results/llm_first_attempt/summary.json), [configuration](results/llm_first_attempt/config.json), [diagnostics](results/llm_first_attempt/diagnostics.json), and [original ZIP](results/llm_first_attempt/original_run.zip) are preserved. The original archive SHA-256 is recorded in the diagnostics.
-
-The second attempt used 1.5B and protocol `retail-json-v2`. Its readiness check failed **0/3**, so neither training nor held-out evaluation started. The saved notebook preserved the [summary](results/llm_second_attempt/summary.json) and [first probe transcript](results/llm_second_attempt/first_preflight_trace.txt); [provenance](results/llm_second_attempt/provenance.json) identifies the source and missing artifacts. Order IDs were still invented and the order-listing step was skipped. Its recorded T4 precision was bfloat16; that is a configuration finding, not a proven cause of the model errors.
-
-Protocol **`retail-native-v3`** passes JSON function schemas through Qwen's native chat template, represents assistant calls as `tool_calls`, and represents actual results as `role: tool`. The same conversion is used during inference and response-only training. This replaces custom tool descriptions embedded in ordinary chat. It follows the [Qwen function-calling interface](https://qwen.readthedocs.io/en/v2.5/framework/function_call.html). All tools remain available; the code never chooses the next action, invents an argument, or supplies the current task's reference solution for the model.
-
-Exactly one tool call can be executed per turn. Ordinary native wrappers are parsed without counting them as error recovery; a single call embedded in extra prose is counted in `format_recoveries`. Multiple calls are rejected. Original model outputs remain in `raw_responses`; audit transcripts and valid training targets use canonical action JSON. Malformed non-action responses are excluded from training targets even when the trajectory later succeeds.
-
-Before the long experiment, up to three **training** tasks, covering available operation types, check whether the model can complete at least one request with both a positive reward and a correct goal outcome. A failed check stops before baseline evaluation and full rollout collection. Probe conversations are saved for diagnosis and excluded from training examples and held-out scores. `--preflight-tasks 0` explicitly disables this check. Passing it is a readiness signal, not a guarantee of sufficient training data or a measured improvement.
-
-Model, prompt, parser, precision, and protocol changes define different configurations. Only a configuration's own matched before/after evaluation can support a training-effect claim. Offline checks verify role conversion, label masking, real tiny-model LoRA updates, and the T4 precision rule. They use an independent test template, not downloaded Qwen weights. Neither success on the pretrained model nor an LLM learning gain has been demonstrated for v3.
-
-### When a run cannot train
-
-An LLM run returns exit code `2` if a split has no valid tasks, the preflight check fails, or it collects no rewarded training attempts. Read `status.json`, `summary.json`, `preflight_rollouts.jsonl`, and any challenger logs. A completed LLM update is explicitly marked `training_completed: true`; an after-training score additionally requires the final evaluation to finish. Do not convert an absent after-training score to zero. We never train on reference solutions as a hidden fallback. New notebook attempts receive fresh output directories, and the final cell downloads the ZIP automatically on Colab.
-
-If the challenger accepts fewer tasks than requested, the experiment uses the actual accepted tasks and records both requested and actual counts. Test results should be interpreted alongside sample size and the task-generation acceptance logs.
-
-### Reuse a saved adapter
-
-```python
-from peft import PeftModel
-from sca.agents import run_model
-from sca.llm import HFBackend
-from sca.tasks import template_task
-
-backend = HFBackend.load("Qwen/Qwen2.5-1.5B-Instruct", device="auto")
-backend.model = PeftModel.from_pretrained(backend.model, "outputs/llm_template/adapter")
-rollout = run_model(template_task(900001, "test"), backend, seed=42)
-print(rollout.success, rollout.tool_errors)
-```
-
-Use the exact base model chosen for the training run; it is recorded in `config.json`.
-
-## Evaluation and experiment interpretation
+## Evaluation notes
 
 - **Pass@1:** fraction of test tasks solved on the first sampled attempt.
-- **Pass@k:** fraction solved at least once across exactly k sampled attempts. This is an observed success fraction, not an extrapolated estimator.
-- **Attempt success rate:** successful attempts divided by all attempts. Per-operation scores use the same denominator within each operation.
-- **Mean tool calls:** actual dispatched tool calls per attempt, including calls returning errors; `finish` and malformed JSON are excluded. `tool_errors` also counts malformed-action errors.
-- **Verifier/oracle disagreements:** differences between the generated task checks used for rewards and an independent evaluator used for reported task success. The evaluator checks the goal and preservation of all unrelated order state.
+- **Pass@k:** fraction solved at least once among k sampled attempts; this does not mean every attempt succeeds.
+- **Tool/action errors:** unsuccessful tool calls and malformed action responses.
+- **Verifier/oracle disagreement:** a difference between the task verifier's reward and the independent goal evaluator.
 
-Before/after evaluation uses the same test tasks, seeds, temperature, and step budget. Test IDs, environment seeds, and instructions are checked for overlap with training. Training data is exported only from rewarded **training** rollouts. The executor receives no reference solution, goal metadata, verifier, or failure cases.
+The evaluator checks the requested change and preservation of unrelated orders. Training and test tasks are kept separate. The executor receives the request, tool information, and observations, without the task's reference solution, verifier, or failure cases.
 
-Template test tasks use fresh customer/order identities and a different request layout, while sharing the same task families and vocabulary. This is a held-out synthetic split, not evidence of broad real-world generalization. With `--task-source llm`, both splits are model-authored and filtered; selection effects and instruction/check mismatches remain possible.
-
-The ablation dataset deliberately contains equal groups of valid tasks, bad reference solutions, permissive checks, and overstrict checks. Filters compare: schema only; reference-solution checking; and reference plus no-op/failure-case checking. Audit rates apply to this constructed fixture set and finite probes only. They do not measure the paper's or a language model's task-generation quality.
-
-One small run cannot establish statistical significance. LLM training may improve, worsen, or leave scores unchanged. Repeat with several seeds and larger task sets before making performance claims. Included evidence comprises the completed CPU demonstration, tiny random-model training checks, the unsuccessful first Colab attempt, and the unsuccessful second readiness check. The native-v3 pretrained-model check is pending.
-
-## Output files
-
-| File | Contents |
-| --- | --- |
-| `config.json` | CLI arguments and seed. |
-| `train_tasks.jsonl`, `test_tasks.jsonl` | Full task specifications with source and exploration trace. |
-| `challenger_train.jsonl`, `challenger_test.jsonl` | Accepted/rejected proposals and model conversations, for LLM task authoring. |
-| `preflight.json`, `preflight_rollouts.jsonl` | Training-only readiness check and original model responses; excluded from RFT examples and test scores. |
-| `console.log` | Colab subprocess output, also printed into the notebook for recovery after disconnection. |
-| `before_rollouts.jsonl`, `after_rollouts.jsonl` | Held-out attempts before and after the update. |
-| `training_rollouts.jsonl` | All sampled training attempts, including failures. |
-| `successful_actions.jsonl` | Assistant-response training examples from rewarded training rollouts. |
-| `summary.json`, `metrics.csv` | Actual metrics, task counts, runtime, and experiment identity. |
-| `filter_ablation.json`, `filter_ablation.csv` | Fixture filter acceptance and probe confusion counts. |
-| `evaluation.svg`, `filter_ablation.svg` | Static figures suitable for slides, labeled with their actual experiment type. |
-| `policy.json` | Learned strategy probabilities in CPU mode. |
-| `adapter/` | LoRA weights, tokenizer, and training-loss summary in successful LLM mode. |
-
-Full generated runs and weights are ignored by Git. Keep compact, clearly identified results when preparing the final submission, and download Colab artifacts before the runtime ends.
+The synthetic task families and small sample sizes limit generalization. One seed does not establish statistical significance, and finite failure-case tests do not prove a verifier correct.
 
 ## Tests
 
@@ -170,37 +102,29 @@ Core checks run without optional packages:
 python -m unittest discover -s tests -p test_core.py -v
 ```
 
-With the LLM dependencies installed, run all checks:
+With the optional LLM dependencies installed:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-The LLM smoke test constructs a tiny random Qwen model and a local tokenizer. It checks response-only label masking, real LoRA weight updates, saved-adapter reloading, and generation without downloading weights. This validates the training plumbing; it does not measure pretrained-model quality or validate GPU behavior.
+The checks cover environment state, filtering, train/test separation, preservation of the original notebook outputs, function-call formatting, response-only masking, and tiny-model LoRA updates and adapter reloading. Tiny random-model checks validate code behavior; they are separate from pretrained-model performance measurements.
 
 ## Repository structure
 
 ```text
-sca/
-  environment.py      # Stateful tools and independent evaluation oracle
-  schema.py           # Action, goal, verifier-check, and task schemas
-  tasks.py            # Template challenger, verifier, filters, fixture ablations
-  challenger.py       # Interactive LLM task authoring
-  agents.py           # CPU/LLM executors, trajectories, evaluation
-  llm.py              # Hugging Face backend and response-only LoRA training
-  protocol.py         # Native function schemas and shared inference/training format
-  cli.py              # Experiment orchestration and split checks
-  report.py           # JSON, CSV, and SVG artifacts
+README.md
+pyproject.toml
 notebooks/
-  self_challenging_agents.ipynb
-slides/               # PowerPoint, PDF, speaker notes, and overview
-results/cpu_demo/      # Measured CPU example, clearly labeled
-results/llm_first_attempt/  # Original unsuccessful Colab run and diagnostics
-results/llm_second_attempt/ # Readiness failure recovered from the executed notebook
-tests/                # Core and optional tiny-model smoke tests
-scripts/
-  build_notebook.py   # Rebuilds the unexecuted notebook
-  build_presentation.py  # Rebuilds slides (requires python-pptx and Pillow)
+  self_challenging_agents.ipynb   # Final executed Colab notebook
+slides/
+  self_challenging_agents.pptx   # PowerPoint with embedded speaker notes
+sca/                            # Environment, agents, verification, training, and reporting
+tests/                          # Core and optional model checks
+results/
+  cpu_demo/                     # Measured policy-learning demonstration
+  llm_first_attempt/            # Final notebook's original experiment artifacts
+  llm_second_attempt/           # Supporting diagnostic evidence
 ```
 
 ## Reference

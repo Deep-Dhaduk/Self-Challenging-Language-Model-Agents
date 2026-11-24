@@ -285,14 +285,25 @@ class CLITests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 run(args)  # Existing results are preserved.
 
-    def test_notebook_has_valid_unexecuted_cells(self):
+    def test_original_notebook_preserves_first_run_outputs(self):
         notebook = json.loads(Path("notebooks/self_challenging_agents.ipynb").read_text(encoding="utf-8"))
         self.assertEqual(notebook["nbformat"], 4)
+        original = json.loads(Path("results/llm_first_attempt/summary.json").read_text(encoding="utf-8"))
+        summaries = []
         for cell in notebook["cells"]:
             if cell["cell_type"] == "code":
                 compile("".join(cell["source"]), "notebook cell", "exec")
-                self.assertIsNone(cell["execution_count"])
-                self.assertEqual(cell["outputs"], [])
+                for output in cell.get("outputs", []):
+                    text = "".join(output.get("text", [])).lstrip()
+                    if text.startswith("{"):
+                        try:
+                            value, _ = json.JSONDecoder().raw_decode(text)
+                        except ValueError:
+                            continue
+                        if isinstance(value, dict) and "training_rollouts" in value:
+                            summaries.append(value)
+        self.assertEqual(summaries, [original])
+        self.assertEqual(len(list(Path("notebooks").glob("*.ipynb"))), 1)
 
 
 if __name__ == "__main__":
